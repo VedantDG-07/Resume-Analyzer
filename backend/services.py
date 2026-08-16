@@ -5,6 +5,7 @@ import re
 from typing import Dict, Any, List
 from PyPDF2 import PdfReader
 import docx
+import requests
 from dotenv import load_dotenv
 
 import schemas
@@ -45,7 +46,97 @@ def extract_text(file_bytes: bytes, filename: str) -> str:
     return ""
 
 # ==========================================
-# 2. FALLBACK HEURISTIC GENERATOR (Graceful Offline Fallback)
+# 2. ROBUST TEXT CHUNKER (Built-in + LangChain)
+# ==========================================
+
+def chunk_text(text: str, chunk_size: int = 500, chunk_overlap: int = 80) -> List[str]:
+    try:
+        from langchain_text_splitters import RecursiveCharacterTextSplitter
+        splitter = RecursiveCharacterTextSplitter(chunk_size=chunk_size, chunk_overlap=chunk_overlap)
+        return [doc.page_content for doc in splitter.create_documents([text])]
+    except Exception:
+        pass
+
+    try:
+        from langchain.text_splitter import RecursiveCharacterTextSplitter
+        splitter = RecursiveCharacterTextSplitter(chunk_size=chunk_size, chunk_overlap=chunk_overlap)
+        return [doc.page_content for doc in splitter.create_documents([text])]
+    except Exception:
+        pass
+
+    # Native Python semantic chunker
+    paragraphs = [p.strip() for p in text.split("\n") if p.strip()]
+    chunks = []
+    current_chunk = ""
+    for p in paragraphs:
+        if len(current_chunk) + len(p) < chunk_size:
+            current_chunk += "\n" + p
+        else:
+            if current_chunk:
+                chunks.append(current_chunk.strip())
+            current_chunk = p
+    if current_chunk:
+        chunks.append(current_chunk.strip())
+    return chunks if chunks else [text]
+
+# ==========================================
+# 3. MULTI-MODEL GEMINI INVOCATION ENGINE
+# ==========================================
+
+ACTIVE_GEMINI_MODELS = [
+    "gemini-flash-lite-latest",
+    "gemini-flash-latest",
+    "gemini-2.5-flash-lite",
+    "gemma-4-26b-a4b-it"
+]
+
+def _call_gemini_with_fallback(api_key: str, prompt: str) -> str:
+    """Tries active Gemini models with automatic fallback if one is busy (503/429)."""
+    last_err = None
+    for model_name in ACTIVE_GEMINI_MODELS:
+        try:
+            url = f"https://generativelanguage.googleapis.com/v1beta/models/{model_name}:generateContent?key={api_key}"
+            payload = {
+                "contents": [{"parts": [{"text": prompt}]}],
+                "generationConfig": {"temperature": 0.2, "maxOutputTokens": 2048}
+            }
+            resp = requests.post(url, json=payload, timeout=25)
+            if resp.status_code == 200:
+                data = resp.json()
+                cand = data.get("candidates", [{}])[0]
+                text = cand.get("content", {}).get("parts", [{}])[0].get("text", "")
+                if text.strip():
+                    print(f"[AI Service] Successfully generated insights using {model_name}")
+                    return text
+            else:
+                print(f"[AI Service] Model {model_name} returned status {resp.status_code}")
+                last_err = f"Status {resp.status_code}: {resp.text[:120]}"
+        except Exception as e:
+            print(f"[AI Service] Model {model_name} error: {e}")
+            last_err = str(e)
+            
+    raise RuntimeError(f"All Gemini models exhausted. Last error: {last_err}")
+
+# ==========================================
+# 4. JSON RESPONSE PARSER & CLEANER
+# ==========================================
+
+def _clean_and_parse_json(raw_text: str) -> Dict[str, Any]:
+    cleaned = raw_text.strip()
+    if "```json" in cleaned:
+        cleaned = cleaned.split("```json")[1].split("```")[0].strip()
+    elif "```" in cleaned:
+        cleaned = cleaned.split("```")[1].split("```")[0].strip()
+
+    first_brace = cleaned.find("{")
+    last_brace = cleaned.rfind("}")
+    if first_brace != -1 and last_brace != -1:
+        cleaned = cleaned[first_brace:last_brace + 1]
+
+    return json.loads(cleaned)
+
+# ==========================================
+# 5. FALLBACK HEURISTIC GENERATOR
 # ==========================================
 
 def generate_fallback_heuristic_analysis(text: str) -> Dict[str, Any]:
@@ -129,104 +220,103 @@ def generate_fallback_heuristic_analysis(text: str) -> Dict[str, Any]:
     }
 
 # ==========================================
-# 3. LANGCHAIN + RAG PIPELINE
+# 6. MAIN RAG + GEMINI LLM ANALYSIS PIPELINE
 # ==========================================
 
 def analyze_resume_with_rag(text: str) -> Dict[str, Any]:
-    api_key = os.getenv("GOOGLE_API_KEY")
+    api_key = os.getenv("GOOGLE_API_KEY", "").strip()
     if not api_key:
-        print("[AI Service] No GOOGLE_API_KEY set. Using fallback analysis.")
+        print("[AI Service] No GOOGLE_API_KEY set in backend/.env. Using fallback analysis.")
         return generate_fallback_heuristic_analysis(text)
 
+    # 1. Chunk document
+    chunks = chunk_text(text, chunk_size=500, chunk_overlap=80)
+
+    # 2. Vector Retrieval (RAG)
+    rag_context = ""
     try:
-        from langchain_text_splitters import RecursiveCharacterTextSplitter
-        from langchain_google_genai import ChatGoogleGenerativeAI, GoogleGenerativeAIEmbeddings
+        from langchain_google_genai import GoogleGenerativeAIEmbeddings
         from langchain_community.vectorstores import FAISS
-        from langchain_core.prompts import PromptTemplate
-        from langchain_core.output_parsers import PydanticOutputParser
+        from langchain_core.documents import Document
 
-        # 1. Document Chunking
-        text_splitter = RecursiveCharacterTextSplitter(
-            chunk_size=500,
-            chunk_overlap=80,
-            separators=["\n\n", "\n", ".", " ", ""]
-        )
-        docs = text_splitter.create_documents([text])
+        doc_objs = [Document(page_content=c) for c in chunks]
+        embeddings = GoogleGenerativeAIEmbeddings(model="models/gemini-embedding-001", google_api_key=api_key)
+        vectorstore = FAISS.from_documents(doc_objs, embeddings)
+        retriever = vectorstore.as_retriever(search_kwargs={"k": 4})
 
-        # 2. In-Memory Vector Store via RAG
-        rag_context = ""
-        try:
-            embeddings = GoogleGenerativeAIEmbeddings(
-                model="models/text-embedding-004",
-                google_api_key=api_key
-            )
-            vectorstore = FAISS.from_documents(docs, embeddings)
-            retriever = vectorstore.as_retriever(search_kwargs={"k": 5})
+        q1 = retriever.invoke("Work experience accomplishments metrics percentages leadership")
+        q2 = retriever.invoke("Skills technical tools technologies certifications education")
+        q3 = retriever.invoke("Key projects bullet points achievements responsibilities")
 
-            # Retrieve domain-targeted queries
-            q1_docs = retriever.invoke("Work experience accomplishments metrics percentages leadership projects")
-            q2_docs = retriever.invoke("Skills tools technologies certifications education software frameworks")
-            q3_docs = retriever.invoke("Roles responsibilities bullet points achievements")
+        all_retrieved = {d.page_content for d in (q1 + q2 + q3)}
+        rag_context = "\n---\n".join(all_retrieved)
+        print("[AI Service] RAG vector context retrieved successfully via FAISS.")
+    except Exception as rag_err:
+        print(f"[AI Service] RAG vector retrieval note: {rag_err}. Using context chunks.")
+        rag_context = "\n---\n".join(chunks[:6])
 
-            all_retrieved = {d.page_content for d in (q1_docs + q2_docs + q3_docs)}
-            rag_context = "\n---\n".join(all_retrieved)
-        except Exception as embed_err:
-            print(f"[AI Service] Embedding/FAISS fallback: {embed_err}")
-            # If embedding has network/quota issues, use full text chunks directly
-            rag_context = text[:4000]
+    # 3. Formulate Prompt
+    analysis_prompt = f"""You are an elite Executive Resume Reviewer, ATS Algorithm Specialist, and Technical Hiring Manager.
+Analyze the candidate's resume thoroughly using the extracted context below.
 
-        # 3. LLM Setup & Structured Output Parser
-        parser = PydanticOutputParser(pydantic_object=schemas.LLMAnalysisOutput)
-
-        prompt_template = PromptTemplate(
-            template="""You are an expert Executive Resume Reviewer, ATS Algorithm Specialist, and Technical Career Coach.
-Analyze the following resume thoroughly based on the provided contextual sections extracted from the candidate's resume.
-
-Resume Context:
+Resume Sections Context:
 \"\"\"
-{context}
+{rag_context}
 \"\"\"
 
 Full Resume Text Sample:
 \"\"\"
-{full_text}
+{text[:3500]}
 \"\"\"
 
-Instructions:
-1. Provide a realistic numerical evaluation for overall_score (0-100), ats_score (0-100), skill_match (0-100), and issues_found.
-2. Formulate a sharp, professional executive summary (ai_summary) detailing the candidate's level, readiness, and impact.
-3. Write targeted ats_feedback explaining formatting, readability, and parser compliance.
-4. Write targeted action_verb_feedback highlighting weak verbs vs strong verbs.
-5. Identify 2-4 actual weak bullet points from the resume text and rewrite them as high-impact bullet_suggestions with quantified results and rationale.
-6. Suggest 4-8 missing high-value keywords (missing_keywords) that would enhance ATS keyword density.
-7. List 3-5 distinct strengths and 3-5 actionable improvements.
+Analyze the resume and return a STRICT, VALID JSON object with the exact keys below. Do NOT output any preamble or extra text.
 
-{format_instructions}
-""",
-            input_variables=["context", "full_text"],
-            partial_variables={"format_instructions": parser.get_format_instructions()}
-        )
+JSON Schema:
+{{
+  "overall_score": <number between 0 and 100>,
+  "ats_score": <number between 0 and 100>,
+  "skill_match": <number between 0 and 100>,
+  "issues_found": <integer count of issues>,
+  "ai_summary": "<Detailed executive summary evaluating profile strength, career readiness, and competitive edge>",
+  "ats_feedback": "<Specific feedback on layout, formatting, headers, and parsing readability>",
+  "action_verb_feedback": "<Critique on action verb velocity and proactive achievement phrasing>",
+  "bullet_suggestions": [
+    {{
+      "original": "<A real weak or passive line found in the resume>",
+      "improved": "<High-impact rewritten bullet with strong action verb and quantified metric/results>",
+      "reason": "<Why this change is stronger>"
+    }},
+    {{
+      "original": "<Second weak bullet from resume>",
+      "improved": "<Second high-impact rewrite>",
+      "reason": "<Rationale>"
+    }}
+  ],
+  "missing_keywords": ["<Keyword 1>", "<Keyword 2>", "<Keyword 3>", "<Keyword 4>", "<Keyword 5>"],
+  "strengths": [
+    "<Strength 1>",
+    "<Strength 2>",
+    "<Strength 3>"
+  ],
+  "improvements": [
+    "<Actionable Improvement 1>",
+    "<Actionable Improvement 2>",
+    "<Actionable Improvement 3>"
+  ]
+}}
+"""
 
-        llm = ChatGoogleGenerativeAI(
-            model="gemini-1.5-flash",
-            temperature=0.2,
-            google_api_key=api_key,
-            max_output_tokens=2048
-        )
+    # 4. Invoke LLM with fallback
+    try:
+        print("[AI Service] Invoking Gemini LLM for resume analysis...")
+        raw_response = _call_gemini_with_fallback(api_key, analysis_prompt)
+        parsed_data = _clean_and_parse_json(raw_response)
 
-        chain = prompt_template | llm | parser
+        # Validate with Pydantic
+        validated = schemas.LLMAnalysisOutput(**parsed_data)
+        print("[AI Service] Gemini LLM analysis completed and validated successfully!")
+        return validated.model_dump()
 
-        print("[AI Service] Executing LangChain RAG analysis with Gemini...")
-        result = chain.invoke({
-            "context": rag_context,
-            "full_text": text[:3000]
-        })
-
-        # Convert Pydantic object to dictionary
-        result_dict = result.model_dump()
-        print("[AI Service] LangChain RAG analysis completed successfully!")
-        return result_dict
-
-    except Exception as e:
-        print(f"[AI Service] LangChain pipeline error: {e}. Falling back to heuristic engine.")
+    except Exception as llm_err:
+        print(f"[AI Service] LLM generation error: {llm_err}. Falling back to heuristic engine.")
         return generate_fallback_heuristic_analysis(text)
