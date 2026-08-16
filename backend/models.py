@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, Float, DateTime, Boolean, ForeignKey
+from sqlalchemy import Column, Integer, String, Float, DateTime, Boolean, ForeignKey, Text
 from sqlalchemy.orm import relationship
 from datetime import datetime
 from database import Base
@@ -28,6 +28,16 @@ class ResumeAnalysis(Base):
     ats_score = Column(Float)
     skill_match = Column(Float)
     issues_found = Column(Integer)
+    
+    # Rich LLM & RAG fields
+    ai_summary = Column(Text, nullable=True)
+    ats_feedback = Column(Text, nullable=True)
+    action_verb_feedback = Column(Text, nullable=True)
+    bullet_suggestions = Column(Text, nullable=True) # JSON serialized list of dicts
+    missing_keywords = Column(Text, nullable=True)    # JSON serialized list
+    strengths = Column(Text, nullable=True)           # JSON serialized list
+    improvements = Column(Text, nullable=True)        # JSON serialized list
+    
     created_at = Column(DateTime, default=datetime.utcnow)
     
     user_id = Column(Integer, ForeignKey("users.id"))

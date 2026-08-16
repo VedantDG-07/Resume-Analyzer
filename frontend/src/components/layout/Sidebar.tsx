@@ -19,11 +19,13 @@ import {
   History,
   Settings,
   LogOut,
+  Sparkles,
+  Zap
 } from "lucide-react";
 
 const navItems = [
-  { name: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
-  { name: "Upload Resume", href: "/dashboard/upload", icon: UploadCloud },
+  { name: "Dashboard", href: "/dashboard", icon: LayoutDashboard, badge: "Live" },
+  { name: "Upload Resume", href: "/dashboard/upload", icon: UploadCloud, highlight: true },
   { name: "Upload JD", href: "/dashboard/job-match", icon: Briefcase },
   { name: "Analysis", href: "/dashboard/analyze", icon: FileText },
   { name: "ATS Score", href: "/dashboard/ats", icon: Target },
@@ -52,17 +54,25 @@ export function Sidebar() {
   };
 
   return (
-    <aside className="w-72 flex-shrink-0 hidden md:flex flex-col border-r border-border glass-panel">
-      <div className="h-20 flex items-center px-8 border-b border-border/50">
-        <div className="flex items-center gap-3">
-          <div className="w-8 h-8 rounded-lg bg-gradient-to-tr from-primary to-secondary flex items-center justify-center shadow-lg shadow-primary/20">
-            <span className="text-white font-bold text-sm">AI</span>
+    <aside className="w-72 flex-shrink-0 hidden md:flex flex-col border-r border-white/10 glass-panel">
+      {/* Brand Header */}
+      <div className="h-20 flex items-center px-6 border-b border-white/10">
+        <Link href="/" className="flex items-center gap-3 group">
+          <div className="w-9 h-9 rounded-xl bg-gradient-to-tr from-purple-600 via-cyan-500 to-pink-500 flex items-center justify-center shadow-lg shadow-purple-500/30 group-hover:scale-110 transition-transform">
+            <Sparkles className="w-5 h-5 text-white animate-pulse" />
           </div>
-          <span className="font-bold text-xl tracking-tight bg-gradient-to-r from-white to-white/70 bg-clip-text text-transparent">
-            Resume Pro
-          </span>
-        </div>
+          <div>
+            <span className="font-extrabold text-xl tracking-tight text-white flex items-center gap-1">
+              Resum<span className="gradient-text">AI</span>
+            </span>
+            <span className="text-[10px] font-mono-tech text-cyan-400 block tracking-widest uppercase">
+              PULSE v2.0
+            </span>
+          </div>
+        </Link>
       </div>
+
+      {/* Nav List */}
       <nav className="flex-1 overflow-y-auto py-6 px-4 space-y-1 scrollbar-none">
         {navItems.map((item) => {
           const isActive = pathname === item.href;
@@ -70,53 +80,67 @@ export function Sidebar() {
             <Link
               key={item.name}
               href={item.href}
-              className="relative block"
+              className="relative block group"
             >
               {isActive && (
                 <motion.div
-                  layoutId="sidebar-active"
-                  className="absolute inset-0 bg-primary/10 border border-primary/20 rounded-xl"
+                  layoutId="sidebar-active-pill"
+                  className="absolute inset-0 bg-gradient-to-r from-purple-600/30 to-cyan-500/20 border border-purple-500/40 rounded-xl glow-purple"
                   initial={false}
-                  transition={{ type: "spring", stiffness: 300, damping: 30 }}
+                  transition={{ type: "spring", stiffness: 350, damping: 30 }}
                 />
               )}
               <div
                 className={cn(
-                  "relative flex items-center gap-3 px-4 py-3 rounded-xl transition-all text-sm font-medium",
+                  "relative flex items-center justify-between px-4 py-2.5 rounded-xl transition-all text-sm font-medium",
                   isActive
-                    ? "text-primary-foreground"
-                    : "text-muted-foreground hover:text-foreground hover:bg-white/5"
+                    ? "text-white font-bold"
+                    : "text-slate-400 hover:text-white hover:bg-white/5"
                 )}
               >
-                <item.icon className={cn("w-5 h-5 transition-colors", isActive ? "text-primary" : "text-muted-foreground")} />
-                {item.name}
+                <div className="flex items-center gap-3">
+                  <item.icon className={cn("w-4 h-4 transition-colors", isActive ? "text-cyan-400" : "text-slate-400 group-hover:text-cyan-300")} />
+                  <span className="font-mono-tech text-xs tracking-wide">{item.name}</span>
+                </div>
+
+                {item.highlight && !isActive && (
+                  <span className="text-[10px] font-mono-tech px-2 py-0.5 rounded-full bg-gradient-to-r from-purple-500 to-cyan-500 text-white font-bold animate-pulse">
+                    AI
+                  </span>
+                )}
+                {item.badge && isActive && (
+                  <span className="w-2 h-2 rounded-full bg-cyan-400 animate-ping" />
+                )}
               </div>
             </Link>
           );
         })}
       </nav>
-      <div className="p-4 border-t border-border/50">
+
+      {/* User Footer */}
+      <div className="p-4 border-t border-white/10 bg-slate-950/40">
         {user && (
-          <div className="flex items-center gap-3 px-4 py-3 mb-2 rounded-xl bg-white/5 border border-white/5">
+          <div className="flex items-center gap-3 px-3 py-2.5 mb-2 rounded-xl bg-white/5 border border-white/10">
             {user.profilePicture ? (
-              <img src={user.profilePicture} alt="Profile" className="w-10 h-10 rounded-full border border-white/10" />
+              <img src={user.profilePicture} alt="Profile" className="w-9 h-9 rounded-full border border-purple-500/50" />
             ) : (
-              <div className="w-10 h-10 rounded-full bg-primary/20 flex items-center justify-center text-primary font-bold">
+              <div className="w-9 h-9 rounded-full bg-gradient-to-br from-purple-500 to-cyan-500 flex items-center justify-center text-white font-bold text-sm">
                 {user.fullName ? user.fullName.charAt(0) : "U"}
               </div>
             )}
             <div className="flex-1 min-w-0">
-              <p className="text-sm font-medium text-white truncate">{user.fullName}</p>
-              <p className="text-xs text-muted-foreground truncate">{user.email}</p>
+              <p className="text-xs font-bold text-white truncate">{user.fullName || "Pro User"}</p>
+              <p className="text-[10px] font-mono-tech text-cyan-400 truncate">PRO ACCOUNT</p>
             </div>
           </div>
         )}
+
         <button 
           onClick={handleLogout}
-          className="flex items-center justify-center gap-3 px-4 py-3 w-full rounded-xl transition-all text-sm font-medium text-muted-foreground hover:text-red-400 hover:bg-red-400/10"
+          className="flex items-center justify-center gap-2 px-4 py-2 w-full rounded-xl transition-all text-xs font-mono-tech text-slate-400 hover:text-red-400 hover:bg-red-500/10 border border-transparent hover:border-red-500/20"
         >
-          <LogOut className="w-5 h-5" />
-          Logout
+          <LogOut className="w-4 h-4" />
+          Logout Session
         </button>
       </div>
     </aside>
