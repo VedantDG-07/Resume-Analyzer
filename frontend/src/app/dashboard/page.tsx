@@ -26,19 +26,19 @@ export default function DashboardPage() {
   const { data: latestAnalysis, loading } = useLatestAnalysis();
 
   const [stats, setStats] = useState({
-    overall: 85,
-    ats: 92,
-    skill: 78,
-    issues: 3
+    overall: 0,
+    ats: 0,
+    skill: 0,
+    issues: 0
   });
 
   useEffect(() => {
     if (latestAnalysis) {
       setStats({
-        overall: latestAnalysis.overall_score || 85,
-        ats: latestAnalysis.ats_score || 92,
-        skill: latestAnalysis.skill_match || 78,
-        issues: latestAnalysis.issues_found || 3
+        overall: latestAnalysis.overall_score || 0,
+        ats: latestAnalysis.ats_score || 0,
+        skill: latestAnalysis.skill_match || 0,
+        issues: latestAnalysis.issues_found || 0
       });
     }
   }, [latestAnalysis]);

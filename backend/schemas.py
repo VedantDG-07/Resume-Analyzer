@@ -84,3 +84,31 @@ class InterviewPrepResponse(BaseModel):
 
 class InterviewGenerateRequest(BaseModel):
     analysis_id: int
+
+class RoadmapSkill(BaseModel):
+    name: str = Field(description="The name of the skill to learn")
+    priority: str = Field(description="'HIGH', 'MEDIUM', or 'LOW'")
+    status: str = Field(description="'Not Started', 'In Progress', or 'Completed'")
+    rationale: str = Field(description="Why this skill matters for the target role")
+    prerequisites: List[str] = Field(description="List of prerequisite skills")
+    estimated_time: str = Field(description="Estimated time to learn, e.g., '2 weeks'")
+    project_suggestion: str = Field(description="A practical project suggestion to master this skill")
+
+class RoadmapPhase(BaseModel):
+    phase: int = Field(description="Phase number, e.g. 1")
+    title: str = Field(description="Phase title, e.g. 'Foundation'")
+    skills: List[RoadmapSkill] = Field(description="Skills belonging to this phase")
+
+class SkillRoadmapResponse(BaseModel):
+    target_role: str
+    match_score: float
+    phases: List[RoadmapPhase]
+
+class RoadmapGenerateRequest(BaseModel):
+    analysis_id: int
+    target_role: Optional[str] = None
+
+class RoadmapProgressRequest(BaseModel):
+    roadmap_id: int
+    skill_name: str
+    new_status: str

@@ -43,3 +43,20 @@ class ResumeAnalysis(Base):
     
     user_id = Column(Integer, ForeignKey("users.id"))
     owner = relationship("User", back_populates="analyses")
+    roadmaps = relationship("SkillRoadmap", back_populates="analysis", cascade="all, delete-orphan")
+
+class SkillRoadmap(Base):
+    __tablename__ = "skill_roadmaps"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"))
+    analysis_id = Column(Integer, ForeignKey("resume_analyses.id"))
+    target_role = Column(String, index=True)
+    match_score = Column(Float)
+    roadmap_data = Column(Text) # JSON serialized roadmap phases
+    
+    created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    owner = relationship("User")
+    analysis = relationship("ResumeAnalysis", back_populates="roadmaps")

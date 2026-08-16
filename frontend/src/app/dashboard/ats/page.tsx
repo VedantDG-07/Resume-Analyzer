@@ -22,8 +22,15 @@ export default function ATSPage() {
   const { data: latestData, loading: isLoading } = useLatestAnalysis();
   const hasData = !!latestData;
 
-  const handleRemoveResume = () => {
-    // sessionStorage.removeItem("latestAnalysis");
+  const handleRemoveResume = async () => {
+    if (!latestData?.id) return;
+    try {
+      const { deleteAnalysis } = await import("@/lib/api");
+      await deleteAnalysis(latestData.id);
+      window.location.reload();
+    } catch (err) {
+      console.error("Failed to delete analysis", err);
+    }
   };
 
   if (isLoading) {
