@@ -6,3 +6,8 @@ dist/
 build/
 .next/
 *.log
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.pytest_cache/
