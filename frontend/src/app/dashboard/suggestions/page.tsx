@@ -5,6 +5,8 @@ import { motion } from "framer-motion";
 import { useState, useEffect } from "react";
 import EmptyState from "@/components/EmptyState";
 import Link from "next/link";
+import { useLatestAnalysis } from "@/lib/useAnalysis";
+
 
 const suggestions = [
   { id: 1, type: 'impact', title: "Quantify Your Impact", desc: "You mentioned 'Improved sales'. Try changing this to 'Increased regional sales by 24% over 6 months' to give recruiters a concrete metric.", category: "High Priority" },
@@ -13,16 +15,8 @@ const suggestions = [
 ];
 
 export default function SuggestionsPage() {
-  const [hasData, setHasData] = useState(false);
-  const [isLoading, setIsLoading] = useState(true);
-
-  useEffect(() => {
-    const data = sessionStorage.getItem("latestAnalysis");
-    if (data) {
-      setHasData(true);
-    }
-    setIsLoading(false);
-  }, []);
+  const { data: latestData, loading: isLoading } = useLatestAnalysis();
+  const hasData = !!latestData;
 
   if (isLoading) {
     return (
@@ -48,7 +42,7 @@ export default function SuggestionsPage() {
       </div>
 
       <div className="grid grid-cols-1 gap-4">
-        {suggestions.map((s, i) => (
+        {(latestData?.improvements && latestData.improvements.length > 0 ? latestData.improvements.map((desc, idx) => ({ id: idx, title: "Resume Enhancement", desc, category: idx === 0 ? "High Priority" : "Medium Priority" })) : suggestions).map((s, i) => (
           <motion.div 
             key={s.id}
             initial={{ opacity: 0, y: 20 }}

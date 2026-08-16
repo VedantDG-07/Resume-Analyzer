@@ -1,6 +1,7 @@
 "use client";
 
 import { Sparkles, Wand2, Copy, Check, ArrowRight } from "lucide-react";
+import { useLatestAnalysis } from "@/lib/useAnalysis";
 import { motion } from "framer-motion";
 import { useState, useEffect } from "react";
 import EmptyState from "@/components/EmptyState";
@@ -28,18 +29,11 @@ const MOCK_REWRITES = [
 
 export default function RewritePage() {
   const [copied, setCopied] = useState(false);
-  const [hasData, setHasData] = useState(false);
-  const [isLoading, setIsLoading] = useState(true);
   const [isRewriting, setIsRewriting] = useState(false);
   const [currentRewriteIndex, setCurrentRewriteIndex] = useState(0);
 
-  useEffect(() => {
-    const data = sessionStorage.getItem("latestAnalysis");
-    if (data) {
-      setHasData(true);
-    }
-    setIsLoading(false);
-  }, []);
+  const { data: latestData, loading: isLoading } = useLatestAnalysis();
+  const hasData = !!latestData;
 
   const copyToClipboard = () => {
     setCopied(true);
@@ -49,7 +43,10 @@ export default function RewritePage() {
   const handleRewrite = () => {
     setIsRewriting(true);
     setTimeout(() => {
-      setCurrentRewriteIndex((prev) => (prev + 1) % MOCK_REWRITES.length);
+      setCurrentRewriteIndex((prev) => {
+        const length = latestData?.bullet_suggestions?.length || MOCK_REWRITES.length;
+        return (prev + 1) % length;
+      });
       setIsRewriting(false);
     }, 1000);
   };
@@ -81,10 +78,9 @@ export default function RewritePage() {
           <h3 className="text-lg font-medium text-white px-2">Original Content</h3>
           <div className="p-6 rounded-3xl glass-card border border-white/5 bg-white/5 min-h-[300px]">
             <p className="text-muted-foreground leading-relaxed line-through decoration-red-500/50">
-              - Responsible for managing a team of 5 developers.<br/><br/>
-              - Worked on the backend API using Python.<br/><br/>
-              - Helped increase the overall sales of the company.<br/><br/>
-              - Fixed bugs and issues in the codebase.
+              {latestData?.bullet_suggestions && latestData.bullet_suggestions.length > 0 
+                ? latestData.bullet_suggestions[currentRewriteIndex]?.original 
+                : "- Responsible for managing a team of 5 developers.\n\n- Worked on the backend API using Python."}
             </p>
           </div>
         </motion.div>
@@ -108,9 +104,18 @@ export default function RewritePage() {
               </div>
             ) : null}
             <ul className="text-white leading-relaxed space-y-4 list-disc list-inside relative z-10 marker:text-primary">
-              {MOCK_REWRITES[currentRewriteIndex].map((item, i) => (
-                <li key={i}><span className="font-semibold">{item.verb}</span> {item.text}</li>
-              ))}
+              {latestData?.bullet_suggestions && latestData.bullet_suggestions.length > 0 ? (
+                <>
+                  <li className="list-none mb-2 font-medium">{latestData.bullet_suggestions[currentRewriteIndex]?.improved}</li>
+                  <li className="list-none text-sm text-primary/70 mt-4 border-t border-primary/20 pt-4">
+                    <span className="font-semibold text-primary">Why it's better:</span> {latestData.bullet_suggestions[currentRewriteIndex]?.reason}
+                  </li>
+                </>
+              ) : (
+                MOCK_REWRITES[currentRewriteIndex].map((item, i) => (
+                  <li key={i}><span className="font-semibold">{item.verb}</span> {item.text}</li>
+                ))
+              )}
             </ul>
           </div>
         </motion.div>

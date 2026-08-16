@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import { Sparkles, ScanLine, CheckCircle2, XCircle, Search, UploadCloud, Trash2 } from "lucide-react";
 import { motion } from "framer-motion";
 import Link from "next/link";
+import { useLatestAnalysis } from "@/lib/useAnalysis";
 
 const atsFields = [
   { field: "First Name", status: "found", value: "Rahul" },
@@ -18,21 +19,11 @@ const atsFields = [
 ];
 
 export default function ATSPage() {
-  const [hasData, setHasData] = useState(false);
-  const [isLoading, setIsLoading] = useState(true);
-
-  useEffect(() => {
-    // Check if there is any analyzed resume data in session storage
-    const data = sessionStorage.getItem("latestAnalysis");
-    if (data) {
-      setHasData(true);
-    }
-    setIsLoading(false);
-  }, []);
+  const { data: latestData, loading: isLoading } = useLatestAnalysis();
+  const hasData = !!latestData;
 
   const handleRemoveResume = () => {
-    sessionStorage.removeItem("latestAnalysis");
-    setHasData(false);
+    // sessionStorage.removeItem("latestAnalysis");
   };
 
   if (isLoading) {
@@ -93,7 +84,7 @@ export default function ATSPage() {
           </div>
           
           <div className="space-y-3">
-            {atsFields.map((item, idx) => (
+            {(latestData?.parsed_ats_data || atsFields).map((item, idx) => (
               <motion.div 
                 key={idx}
                 initial={{ opacity: 0, x: -20 }}

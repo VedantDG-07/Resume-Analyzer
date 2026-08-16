@@ -3,6 +3,8 @@
 import { Sparkles, History, FileText, ArrowRight } from "lucide-react";
 import { motion } from "framer-motion";
 import { useState, useEffect } from "react";
+import Link from "next/link";
+import { useLatestAnalysis } from "@/lib/useAnalysis";
 import EmptyState from "@/components/EmptyState";
 
 const history = [
@@ -12,16 +14,8 @@ const history = [
 ];
 
 export default function HistoryPage() {
-  const [hasData, setHasData] = useState(false);
-  const [isLoading, setIsLoading] = useState(true);
-
-  useEffect(() => {
-    const data = sessionStorage.getItem("latestAnalysis");
-    if (data) {
-      setHasData(true);
-    }
-    setIsLoading(false);
-  }, []);
+  const { data: latestData, loading: isLoading } = useLatestAnalysis();
+  const hasData = !!latestData;
 
   if (isLoading) {
     return (

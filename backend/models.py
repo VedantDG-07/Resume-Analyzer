@@ -37,6 +37,7 @@ class ResumeAnalysis(Base):
     missing_keywords = Column(Text, nullable=True)    # JSON serialized list
     strengths = Column(Text, nullable=True)           # JSON serialized list
     improvements = Column(Text, nullable=True)        # JSON serialized list
+    parsed_ats_data = Column(Text, nullable=True)     # JSON serialized list of ATS fields
     
     created_at = Column(DateTime, default=datetime.utcnow)
     

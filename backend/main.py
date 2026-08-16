@@ -53,6 +53,13 @@ def format_analysis_response(db_item: models.ResumeAnalysis) -> schemas.ResumeAn
         except Exception:
             improvements = []
 
+    parsed_ats_data = []
+    if db_item.parsed_ats_data:
+        try:
+            parsed_ats_data = json.loads(db_item.parsed_ats_data)
+        except Exception:
+            parsed_ats_data = []
+
     return schemas.ResumeAnalysisResponse(
         id=db_item.id,
         filename=db_item.filename,
@@ -67,6 +74,7 @@ def format_analysis_response(db_item: models.ResumeAnalysis) -> schemas.ResumeAn
         missing_keywords=missing_keywords,
         strengths=strengths,
         improvements=improvements,
+        parsed_ats_data=parsed_ats_data,
         created_at=db_item.created_at
     )
 
@@ -111,6 +119,7 @@ async def analyze_resume(
         missing_keywords=json.dumps(analysis_data.get("missing_keywords", [])),
         strengths=json.dumps(analysis_data.get("strengths", [])),
         improvements=json.dumps(analysis_data.get("improvements", [])),
+        parsed_ats_data=json.dumps(analysis_data.get("parsed_ats_data", [])),
         user_id=current_user.id
     )
     db.add(db_analysis)
@@ -123,3 +132,17 @@ async def analyze_resume(
 def get_analyses(skip: int = 0, limit: int = 10, db: Session = Depends(get_db), current_user: models.User = Depends(auth.get_current_user)):
     analyses = db.query(models.ResumeAnalysis).filter(models.ResumeAnalysis.user_id == current_user.id).order_by(models.ResumeAnalysis.created_at.desc()).offset(skip).limit(limit).all()
     return [format_analysis_response(a) for a in analyses]
+
+@app.post("/api/interview/generate", response_model=schemas.InterviewPrepResponse)
+def generate_interview(request: schemas.InterviewGenerateRequest, db: Session = Depends(get_db), current_user: models.User = Depends(auth.get_current_user)):
+    db_analysis = db.query(models.ResumeAnalysis).filter(
+        models.ResumeAnalysis.id == request.analysis_id,
+        models.ResumeAnalysis.user_id == current_user.id
+    ).first()
+    
+    if not db_analysis:
+        raise HTTPException(status_code=404, detail="Resume analysis not found")
+        
+    analysis_obj = format_analysis_response(db_analysis)
+    questions = services.generate_interview_questions(analysis_obj)
+    return questions

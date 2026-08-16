@@ -3,6 +3,8 @@
 import { motion, useMotionValue, useTransform, animate } from "framer-motion";
 import { UploadCloud, CheckCircle, AlertTriangle, Sparkles, Target, BarChart, History, ArrowRight, Zap, RefreshCw, FileText } from "lucide-react";
 import Link from "next/link";
+import { useLatestAnalysis } from "@/lib/useAnalysis";
+
 import { useEffect, useState } from "react";
 import { ScoreRing } from "@/components/ui/ScoreRing";
 import { BulletOptimizer } from "@/components/ui/BulletOptimizer";
@@ -21,6 +23,8 @@ function AnimatedCounter({ value }: { value: number }) {
 
 export default function DashboardPage() {
   const [isDragging, setIsDragging] = useState(false);
+  const { data: latestAnalysis, loading } = useLatestAnalysis();
+
   const [stats, setStats] = useState({
     overall: 85,
     ats: 92,
@@ -29,21 +33,15 @@ export default function DashboardPage() {
   });
 
   useEffect(() => {
-    try {
-      const stored = sessionStorage.getItem("latestAnalysis");
-      if (stored) {
-        const data = JSON.parse(stored);
-        setStats({
-          overall: data.overall_score || 85,
-          ats: data.ats_score || 92,
-          skill: data.skill_match || 78,
-          issues: data.issues_found || 3
-        });
-      }
-    } catch (err) {
-      console.error("Failed to parse local stats", err);
+    if (latestAnalysis) {
+      setStats({
+        overall: latestAnalysis.overall_score || 85,
+        ats: latestAnalysis.ats_score || 92,
+        skill: latestAnalysis.skill_match || 78,
+        issues: latestAnalysis.issues_found || 3
+      });
     }
-  }, []);
+  }, [latestAnalysis]);
 
   return (
     <div className="max-w-7xl mx-auto space-y-8 font-sans text-slate-100">

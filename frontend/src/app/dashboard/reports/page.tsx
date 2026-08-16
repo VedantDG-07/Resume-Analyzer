@@ -2,27 +2,19 @@
 
 import { Sparkles, FileBarChart, Download, FileJson } from "lucide-react";
 import { motion } from "framer-motion";
+import { useLatestAnalysis } from "@/lib/useAnalysis";
+
 import { useState, useEffect } from "react";
 import EmptyState from "@/components/EmptyState";
 
 export default function ReportsPage() {
-  const [hasData, setHasData] = useState(false);
-  const [isLoading, setIsLoading] = useState(true);
-
-  useEffect(() => {
-    const data = sessionStorage.getItem("latestAnalysis");
-    if (data) {
-      setHasData(true);
-    }
-    setIsLoading(false);
-  }, []);
+  const { data: latestData, loading: isLoading } = useLatestAnalysis();
+  const hasData = !!latestData;
 
   const handleExportPDF = async () => {
-    const dataStr = sessionStorage.getItem("latestAnalysis");
-    if (!dataStr) return;
-    
+    if (!latestData) return;
+    const data = latestData;
     try {
-      const data = JSON.parse(dataStr);
       
       // Dynamically import jsPDF and autoTable to avoid SSR core-js errors in Next.js
       const jsPDFModule = await import("jspdf");
@@ -69,9 +61,8 @@ export default function ReportsPage() {
   };
 
   const handleExportJSON = () => {
-    const data = sessionStorage.getItem("latestAnalysis");
-    if (!data) return;
-    const blob = new Blob([data], { type: "application/json" });
+    if (!latestData) return;
+    const blob = new Blob([JSON.stringify(latestData, null, 2)], { type: "application/json" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;

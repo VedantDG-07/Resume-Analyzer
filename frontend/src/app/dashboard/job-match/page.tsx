@@ -1,28 +1,18 @@
 "use client";
 
 import { Sparkles, Briefcase, FileSearch, ArrowRight, CheckCircle2, AlertCircle, TrendingUp } from "lucide-react";
+import { useLatestAnalysis } from "@/lib/useAnalysis";
 import { motion, AnimatePresence } from "framer-motion";
 import { useState, useEffect } from "react";
 import EmptyState from "@/components/EmptyState";
 
 export default function JobMatchPage() {
-  const [hasData, setHasData] = useState(false);
-  const [isLoading, setIsLoading] = useState(true);
-  
-  // Form State
-  const [jobTitle, setJobTitle] = useState("");
-  const [jobDesc, setJobDesc] = useState("");
-  
-  // Scanning State
+  const [jobTitle, setJobTitle] = useState('');
+  const [jobDesc, setJobDesc] = useState('');
   const [scanState, setScanState] = useState<'idle' | 'scanning' | 'results'>('idle');
 
-  useEffect(() => {
-    const data = sessionStorage.getItem("latestAnalysis");
-    if (data) {
-      setHasData(true);
-    }
-    setIsLoading(false);
-  }, []);
+  const { data: latestData, loading: isLoading } = useLatestAnalysis();
+  const hasData = !!latestData;
 
   const handleScan = () => {
     if (!jobDesc.trim()) return; // Don't scan empty description

@@ -6,6 +6,7 @@ import { motion } from "framer-motion";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { ScoreRing } from "@/components/ui/ScoreRing";
+import { useLatestAnalysis } from "@/lib/useAnalysis";
 
 interface BulletSuggestion {
   original: string;
@@ -31,22 +32,9 @@ interface AnalysisData {
 }
 
 export default function AnalyzePage() {
-  const [data, setData] = useState<AnalysisData | null>(null);
-  const [loading, setLoading] = useState(true);
+  const { data, loading } = useLatestAnalysis();
   const [copiedIdx, setCopiedIdx] = useState<number | null>(null);
   const [copiedKeyword, setCopiedKeyword] = useState<string | null>(null);
-
-  useEffect(() => {
-    const stored = sessionStorage.getItem("latestAnalysis");
-    if (stored) {
-      try {
-        setData(JSON.parse(stored));
-      } catch (e) {
-        console.error("Failed to parse stored analysis", e);
-      }
-    }
-    setLoading(false);
-  }, []);
 
   const handleCopyBullet = (text: string, idx: number) => {
     navigator.clipboard.writeText(text);

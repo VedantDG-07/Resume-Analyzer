@@ -258,6 +258,7 @@ def analyze_resume_with_rag(text: str) -> Dict[str, Any]:
     # 3. Formulate Prompt
     analysis_prompt = f"""You are an elite Executive Resume Reviewer, ATS Algorithm Specialist, and Technical Hiring Manager.
 Analyze the candidate's resume thoroughly using the extracted context below.
+CRITICAL INSTRUCTION: Your feedback MUST be highly personalized. Do NOT provide generic advice like "Use the Google XYZ formula" or "Quantify your impact" or "Fix character spacing". You MUST reference specific projects, specific skills, or specific sentences from the candidate's actual resume text. If you suggest an improvement, explain exactly which sentence or section in their resume needs it.
 
 Resume Sections Context:
 \"\"\"
@@ -285,23 +286,55 @@ JSON Schema:
       "original": "<A real weak or passive line found in the resume>",
       "improved": "<High-impact rewritten bullet with strong action verb and quantified metric/results>",
       "reason": "<Why this change is stronger>"
-    }},
-    {{
-      "original": "<Second weak bullet from resume>",
-      "improved": "<Second high-impact rewrite>",
-      "reason": "<Rationale>"
     }}
   ],
-  "missing_keywords": ["<Keyword 1>", "<Keyword 2>", "<Keyword 3>", "<Keyword 4>", "<Keyword 5>"],
-  "strengths": [
-    "<Strength 1>",
-    "<Strength 2>",
-    "<Strength 3>"
-  ],
+  "missing_keywords": ["<Specific Keyword 1 missing from their stack>", "<Specific Keyword 2>"],
+  "strengths": ["<Specific Strength 1 found in their text>", "<Specific Strength 2>"],
   "improvements": [
-    "<Actionable Improvement 1>",
-    "<Actionable Improvement 2>",
-    "<Actionable Improvement 3>"
+    "<Hyper-specific Improvement 1 referencing their actual project/role>", 
+    "<Hyper-specific Improvement 2 referencing their actual skills/text>"
+  ],
+  "parsed_ats_data": [
+    {{
+      "field": "First Name",
+      "status": "found",
+      "value": "<Extracted First Name or 'Missing'>"
+    }},
+    {{
+      "field": "Last Name",
+      "status": "found",
+      "value": "<Extracted Last Name or 'Missing'>"
+    }},
+    {{
+      "field": "Email",
+      "status": "found",
+      "value": "<Extracted Email or 'Missing'>"
+    }},
+    {{
+      "field": "Phone",
+      "status": "found",
+      "value": "<Extracted Phone or 'Missing'>"
+    }},
+    {{
+      "field": "LinkedIn URL",
+      "status": "found",
+      "value": "<Extracted LinkedIn URL or 'Missing'>"
+    }},
+    {{
+      "field": "Education (Degree)",
+      "status": "found",
+      "value": "<Extracted Highest Degree or 'Missing'>"
+    }},
+    {{
+      "field": "Graduation Year",
+      "status": "found",
+      "value": "<Extracted Year or 'Missing'>"
+    }},
+    {{
+      "field": "Work Experience 1",
+      "status": "found",
+      "value": "<Extracted Latest Job Title and Company or 'Missing'>"
+    }}
   ]
 }}
 """
@@ -320,3 +353,86 @@ JSON Schema:
     except Exception as llm_err:
         print(f"[AI Service] LLM generation error: {llm_err}. Falling back to heuristic engine.")
         return generate_fallback_heuristic_analysis(text)
+
+# ==========================================
+# 7. INTERVIEW PREP GENERATOR
+# ==========================================
+
+def generate_interview_questions(analysis: Any) -> Dict[str, Any]:
+    api_key = os.getenv("GOOGLE_API_KEY", "").strip()
+    if not api_key:
+        raise ValueError("No GOOGLE_API_KEY set for interview generation.")
+
+    # Build context from analysis
+    context_str = f"AI Summary: {analysis.ai_summary}\n"
+    if analysis.strengths:
+        context_str += f"Strengths: {analysis.strengths}\n"
+    if analysis.parsed_ats_data:
+        context_str += f"Extracted Data: {analysis.parsed_ats_data}\n"
+    if analysis.missing_keywords:
+        context_str += f"Missing/Suggested Skills: {analysis.missing_keywords}\n"
+    if analysis.improvements:
+        context_str += f"Improvements: {analysis.improvements}\n"
+    if analysis.bullet_suggestions:
+        context_str += f"Bullet points context: {analysis.bullet_suggestions}\n"
+
+    prompt = f"""You are an elite Technical Hiring Manager conducting an interview based on the candidate's resume.
+Your task is to generate EXACTLY 3 highly personalized interview questions for this specific candidate.
+
+Candidate Resume Context:
+\"\"\"
+{context_str}
+\"\"\"
+
+Follow these strict rules:
+1. Question 1 (type: "resume_project"): Based directly on something mentioned in the resume (e.g., a project, work experience, achievement, or technical implementation).
+2. Question 2 (type: "technical"): Based on one or more technical skills detected from the resume context. Do NOT invent unrelated skills.
+3. Question 3 (type: "job_role"): Infer the target job role from the resume context and ask a role-specific question that matches the candidate's skills and the inferred role's standard requirements.
+
+Output the result strictly as a valid JSON object matching this schema:
+{{
+  "questions": [
+    {{
+      "type": "resume_project",
+      "question": "...",
+      "reason": "..."
+    }},
+    {{
+      "type": "technical",
+      "question": "...",
+      "reason": "..."
+    }},
+    {{
+      "type": "job_role",
+      "question": "...",
+      "reason": "..."
+    }}
+  ]
+}}
+
+Do NOT output any additional text, preamble, or markdown blocks, only the JSON. 
+Make the questions reasonable for a real technical interview (Medium to Medium/Hard difficulty). 
+Ensure the questions are distinct and highly specific to the candidate.
+"""
+    try:
+        raw_response = _call_gemini_with_fallback(api_key, prompt)
+        parsed_data = _clean_and_parse_json(raw_response)
+        
+        # Validate structure
+        if "questions" not in parsed_data or len(parsed_data["questions"]) != 3:
+            # Fallback if structure is violated
+            print("[AI Service] Invalid questions length, attempting repair.")
+            questions = parsed_data.get("questions", [])
+            while len(questions) < 3:
+                questions.append({
+                    "type": "technical",
+                    "question": "Based on your resume, how do you handle complex technical problem-solving?",
+                    "reason": "General technical problem solving assessment."
+                })
+            parsed_data["questions"] = questions[:3]
+
+        validated = schemas.InterviewPrepResponse(**parsed_data)
+        return validated.model_dump()
+    except Exception as e:
+        print(f"[AI Service] Interview Generation Error: {e}")
+        raise RuntimeError("Failed to generate interview questions.")

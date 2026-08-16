@@ -2,20 +2,14 @@
 
 import { Sparkles, Target, AlertTriangle, TrendingUp } from "lucide-react";
 import { motion } from "framer-motion";
+import { useLatestAnalysis } from "@/lib/useAnalysis";
+
 import { useState, useEffect } from "react";
 import EmptyState from "@/components/EmptyState";
 
 export default function SkillsPage() {
-  const [hasData, setHasData] = useState(false);
-  const [isLoading, setIsLoading] = useState(true);
-
-  useEffect(() => {
-    const data = sessionStorage.getItem("latestAnalysis");
-    if (data) {
-      setHasData(true);
-    }
-    setIsLoading(false);
-  }, []);
+  const { data: latestData, loading: isLoading } = useLatestAnalysis();
+  const hasData = !!latestData;
 
   if (isLoading) {
     return (
@@ -44,27 +38,18 @@ export default function SkillsPage() {
             <AlertTriangle className="w-5 h-5 text-yellow-400" /> Missing Critical Skills
           </h2>
           <div className="space-y-4">
-            <div className="space-y-2">
-              <div className="flex justify-between text-sm">
-                <span className="text-white">Docker / Kubernetes</span>
-                <span className="text-red-400">0% match</span>
+            {(latestData?.missing_keywords && latestData.missing_keywords.length > 0 ? latestData.missing_keywords : ['Docker / Kubernetes', 'AWS / Cloud']).map((kw, idx) => (
+              <div key={idx} className="space-y-2">
+                <div className="flex justify-between text-sm">
+                  <span className="text-white">{kw}</span>
+                  <span className="text-red-400">0% match</span>
+                </div>
+                <div className="h-2 w-full bg-white/5 rounded-full overflow-hidden">
+                  <div className="h-full bg-red-500 w-0"></div>
+                </div>
+                <p className="text-xs text-muted-foreground">Critical missing skill.</p>
               </div>
-              <div className="h-2 w-full bg-white/5 rounded-full overflow-hidden">
-                <div className="h-full bg-red-500 w-0"></div>
-              </div>
-              <p className="text-xs text-muted-foreground">High demand in your target roles.</p>
-            </div>
-            
-            <div className="space-y-2">
-              <div className="flex justify-between text-sm">
-                <span className="text-white">AWS / Cloud</span>
-                <span className="text-yellow-400">20% match</span>
-              </div>
-              <div className="h-2 w-full bg-white/5 rounded-full overflow-hidden">
-                <div className="h-full bg-yellow-500 w-[20%]"></div>
-              </div>
-              <p className="text-xs text-muted-foreground">Mentioned in passing, needs elaboration.</p>
-            </div>
+            ))}
           </div>
         </motion.div>
 
@@ -73,10 +58,9 @@ export default function SkillsPage() {
             <TrendingUp className="w-5 h-5 text-green-400" /> Strong Matches
           </h2>
           <div className="flex flex-wrap gap-3">
-            <span className="px-4 py-2 rounded-xl bg-green-500/20 text-green-400 font-medium border border-green-500/30">React.js</span>
-            <span className="px-4 py-2 rounded-xl bg-green-500/20 text-green-400 font-medium border border-green-500/30">Node.js</span>
-            <span className="px-4 py-2 rounded-xl bg-green-500/20 text-green-400 font-medium border border-green-500/30">TypeScript</span>
-            <span className="px-4 py-2 rounded-xl bg-green-500/20 text-green-400 font-medium border border-green-500/30">TailwindCSS</span>
+            {(latestData?.strengths && latestData.strengths.length > 0 ? latestData.strengths : ['React.js', 'Node.js', 'TypeScript', 'TailwindCSS']).map((s, idx) => (
+              <span key={idx} className="px-4 py-2 rounded-xl bg-green-500/20 text-green-400 font-medium border border-green-500/30">{s}</span>
+            ))}
           </div>
           <p className="text-sm text-muted-foreground">You have great coverage of frontend technologies. Consider strengthening your devops knowledge to become a full-stack powerhouse.</p>
         </motion.div>

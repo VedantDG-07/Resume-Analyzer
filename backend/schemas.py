@@ -30,6 +30,11 @@ class BulletSuggestion(BaseModel):
     improved: str = Field(description="The AI-optimized, high-impact bullet point with strong action verbs and quantified results")
     reason: str = Field(description="Brief rationale of why this rewrite is stronger")
 
+class ATSParsedField(BaseModel):
+    field: str = Field(description="The name of the field (e.g., First Name, Last Name, Email, Phone, LinkedIn URL, Education (Degree), Graduation Year)")
+    status: str = Field(description="'found' if present, 'not_found' if missing")
+    value: str = Field(description="The extracted value or 'Missing'")
+
 class LLMAnalysisOutput(BaseModel):
     overall_score: float = Field(description="Overall resume quality score between 0 and 100")
     ats_score: float = Field(description="ATS compatibility score between 0 and 100")
@@ -42,6 +47,7 @@ class LLMAnalysisOutput(BaseModel):
     missing_keywords: List[str] = Field(description="List of 4-8 recommended high-value technical/industry keywords missing from the resume", default_factory=list)
     strengths: List[str] = Field(description="List of 3-5 strongest elements identified in the resume", default_factory=list)
     improvements: List[str] = Field(description="List of 3-5 high-priority concrete improvement recommendations", default_factory=list)
+    parsed_ats_data: List[ATSParsedField] = Field(description="List of extracted ATS fields and their status", default_factory=list)
 
 class ResumeAnalysisBase(BaseModel):
     filename: str
@@ -56,6 +62,7 @@ class ResumeAnalysisBase(BaseModel):
     missing_keywords: Optional[List[str]] = None
     strengths: Optional[List[str]] = None
     improvements: Optional[List[str]] = None
+    parsed_ats_data: Optional[List[ATSParsedField]] = None
 
 class ResumeAnalysisCreate(ResumeAnalysisBase):
     pass
@@ -66,3 +73,14 @@ class ResumeAnalysisResponse(ResumeAnalysisBase):
 
     class Config:
         from_attributes = True
+
+class QuestionItem(BaseModel):
+    type: str = Field(description="The type of the question: 'resume_project', 'technical', or 'job_role'")
+    question: str = Field(description="The interview question")
+    reason: str = Field(description="A short explanation of why this question was asked")
+
+class InterviewPrepResponse(BaseModel):
+    questions: List[QuestionItem] = Field(description="A list of exactly 3 interview questions")
+
+class InterviewGenerateRequest(BaseModel):
+    analysis_id: int
