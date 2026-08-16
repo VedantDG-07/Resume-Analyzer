@@ -91,6 +91,21 @@ export function ScoreRing({
             fill="transparent"
           />
 
+          {/* Rotating Energy Ring */}
+          <motion.circle
+            cx={size / 2}
+            cy={size / 2}
+            r={radius + 6}
+            stroke={`url(#${gradientId})`}
+            strokeWidth={1}
+            fill="transparent"
+            strokeDasharray="4 8"
+            animate={{ rotate: 360 }}
+            transition={{ duration: 10, repeat: Infinity, ease: "linear" }}
+            style={{ originX: "50%", originY: "50%" }}
+            opacity={0.5}
+          />
+
           {/* Animated Glowing Score Circle */}
           <motion.circle
             cx={size / 2}
@@ -101,10 +116,13 @@ export function ScoreRing({
             fill="transparent"
             strokeDasharray={circumference}
             initial={{ strokeDashoffset: circumference }}
-            animate={{ strokeDashoffset }}
-            transition={{ duration: 1.5, ease: "easeOut" }}
+            animate={{ strokeDashoffset, scale: [1, 1.02, 1] }}
+            transition={{ 
+              strokeDashoffset: { duration: 1.5, ease: "easeOut" },
+              scale: { duration: 2, repeat: Infinity, ease: "easeInOut" }
+            }}
             strokeLinecap="round"
-            style={{ filter: glowShadow }}
+            style={{ filter: glowShadow, transformOrigin: 'center' }}
           />
         </svg>
 

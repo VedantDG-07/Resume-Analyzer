@@ -6,6 +6,8 @@ import { useLatestAnalysis } from "@/lib/useAnalysis";
 import { useState, useEffect } from "react";
 import EmptyState from "@/components/EmptyState";
 import { generateRoadmap, getRoadmap, updateRoadmapProgress, SkillRoadmapResponse, RoadmapSkill } from "@/lib/api";
+import { PremiumButton } from "@/components/animations/PremiumButton";
+import { HoverCard } from "@/components/animations/HoverCard";
 
 export default function SkillsPage() {
   const { data: latestData, loading: isLoading } = useLatestAnalysis();
@@ -112,14 +114,15 @@ export default function SkillsPage() {
           />
         </div>
         <div className="md:mt-6 w-full md:w-auto">
-          <button 
+          <PremiumButton 
+            variant="primary"
             onClick={handleGenerateRoadmap}
             disabled={isGenerating}
-            className="w-full md:w-auto px-6 py-2.5 bg-primary text-primary-foreground font-medium rounded-xl hover:bg-primary/90 flex items-center justify-center gap-2 disabled:opacity-50 transition-all"
+            className="w-full md:w-auto"
           >
             {isGenerating ? <Loader2 className="w-4 h-4 animate-spin" /> : <RefreshCw className="w-4 h-4" />}
             {roadmapData ? 'Recalculate Roadmap' : 'Generate Roadmap'}
-          </button>
+          </PremiumButton>
         </div>
       </div>
 
@@ -151,7 +154,13 @@ export default function SkillsPage() {
             </h2>
             <div className="flex flex-wrap gap-3">
               {(latestData?.strengths && latestData.strengths.length > 0 ? latestData.strengths : ['React.js', 'Node.js', 'TypeScript']).map((s, idx) => (
-                <span key={idx} className="px-4 py-2 rounded-xl bg-green-500/20 text-green-400 font-medium border border-green-500/30">{s}</span>
+                <motion.span 
+                  key={idx} 
+                  whileHover={{ scale: 1.05, y: -2 }}
+                  className="px-4 py-2 rounded-xl bg-green-500/20 text-green-400 font-medium border border-green-500/30 shadow-lg shadow-green-500/10 cursor-default"
+                >
+                  {s}
+                </motion.span>
               ))}
             </div>
           </motion.div>
@@ -163,22 +172,22 @@ export default function SkillsPage() {
           
           {/* Dashboard Stats */}
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            <div className="glass-card p-5 rounded-2xl border border-white/5 flex flex-col items-center justify-center text-center">
+            <HoverCard glowColor="cyan" className="p-5 flex flex-col items-center justify-center text-center">
               <div className="text-3xl font-bold text-primary mb-1">{matchScore.toFixed(0)}%</div>
               <div className="text-xs text-muted-foreground uppercase tracking-wider">Current Match</div>
-            </div>
-            <div className="glass-card p-5 rounded-2xl border border-white/5 flex flex-col items-center justify-center text-center">
+            </HoverCard>
+            <HoverCard glowColor="default" className="p-5 flex flex-col items-center justify-center text-center">
               <div className="text-3xl font-bold text-white mb-1">{completedSkills}</div>
               <div className="text-xs text-muted-foreground uppercase tracking-wider">Skills Have</div>
-            </div>
-            <div className="glass-card p-5 rounded-2xl border border-white/5 flex flex-col items-center justify-center text-center">
+            </HoverCard>
+            <HoverCard glowColor="default" className="p-5 flex flex-col items-center justify-center text-center">
               <div className="text-3xl font-bold text-white mb-1">{totalSkills - completedSkills}</div>
               <div className="text-xs text-muted-foreground uppercase tracking-wider">Skills To Learn</div>
-            </div>
-            <div className="glass-card p-5 rounded-2xl border border-white/5 flex flex-col items-center justify-center text-center">
+            </HoverCard>
+            <HoverCard glowColor="pink" className="p-5 flex flex-col items-center justify-center text-center">
               <div className="text-3xl font-bold text-yellow-500 mb-1">{highPriority}</div>
               <div className="text-xs text-muted-foreground uppercase tracking-wider">High Priority</div>
-            </div>
+            </HoverCard>
           </div>
 
           <div className="h-px w-full bg-white/10 my-8"></div>

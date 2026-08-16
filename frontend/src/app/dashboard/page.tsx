@@ -9,17 +9,9 @@ import { useEffect, useState } from "react";
 import { ScoreRing } from "@/components/ui/ScoreRing";
 import { BulletOptimizer } from "@/components/ui/BulletOptimizer";
 
-function AnimatedCounter({ value }: { value: number }) {
-  const count = useMotionValue(0);
-  const rounded = useTransform(count, Math.round);
-  
-  useEffect(() => {
-    const animation = animate(count, value, { duration: 1.5, ease: "easeOut" });
-    return animation.stop;
-  }, [value, count]);
-
-  return <motion.span>{rounded}</motion.span>;
-}
+import { AnimatedCounter } from "@/components/animations/AnimatedCounter";
+import { HoverCard } from "@/components/animations/HoverCard";
+import { PremiumButton } from "@/components/animations/PremiumButton";
 
 export default function DashboardPage() {
   const [isDragging, setIsDragging] = useState(false);
@@ -59,8 +51,18 @@ export default function DashboardPage() {
             <span>PULSE HUD ENGINE ONLINE</span>
           </div>
 
-          <h1 className="text-3xl sm:text-4xl font-extrabold tracking-tight text-white">
-            Resume Intelligence Dashboard
+          <h1 className="text-3xl sm:text-4xl font-extrabold tracking-tight text-white flex flex-wrap gap-x-2">
+            {"Resume Intelligence Dashboard".split(" ").map((word, i) => (
+              <motion.span
+                key={i}
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.2 + i * 0.1, duration: 0.5 }}
+                className={i === 1 ? "gradient-text animate-pulse" : ""}
+              >
+                {word}
+              </motion.span>
+            ))}
           </h1>
           <p className="text-slate-300 text-sm">
             Analyze your resume against ATS filters, generate high-impact bullet point rewrites, and optimize target keywords.
@@ -68,16 +70,16 @@ export default function DashboardPage() {
 
           <div className="flex flex-wrap gap-4 pt-2">
             <Link href="/dashboard/upload">
-              <button className="gradient-btn-primary px-6 py-3 rounded-xl text-xs font-mono-tech font-bold text-white shadow-lg glow-purple flex items-center gap-2">
+              <PremiumButton variant="primary">
                 <UploadCloud className="w-4 h-4" />
                 Upload New Resume
-              </button>
+              </PremiumButton>
             </Link>
             <Link href="/dashboard/job-match">
-              <button className="px-6 py-3 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-xs font-mono-tech font-semibold text-slate-200 transition-all flex items-center gap-2">
+              <PremiumButton variant="secondary">
                 <Target className="w-4 h-4 text-cyan-400" />
                 Match Job Description
-              </button>
+              </PremiumButton>
             </Link>
           </div>
         </div>
@@ -96,12 +98,11 @@ export default function DashboardPage() {
           { label: "Skill Gap Match Rate", value: stats.skill, suffix: "%", icon: BarChart, color: "text-emerald-400", glow: "" },
           { label: "Critical Fixes Needed", value: stats.issues, suffix: " items", icon: AlertTriangle, color: "text-pink-400", glow: "" },
         ].map((stat, idx) => (
-          <motion.div
+          <HoverCard
             key={stat.label}
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: idx * 0.1 + 0.1 }}
-            className={`p-6 rounded-2xl glass-card border border-white/10 flex items-center justify-between group hover:border-cyan-500/40 transition-all ${stat.glow}`}
+            delay={idx * 0.1 + 0.1}
+            glowColor={stat.glow.includes('purple') ? 'purple' : stat.glow.includes('cyan') ? 'cyan' : stat.glow.includes('emerald') ? 'emerald' : stat.glow.includes('pink') ? 'pink' : 'default'}
+            className="p-6 flex items-center justify-between group"
           >
             <div>
               <p className="text-xs font-mono-tech uppercase text-slate-400 tracking-wider">{stat.label}</p>
@@ -114,7 +115,7 @@ export default function DashboardPage() {
             <div className="w-12 h-12 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center group-hover:scale-110 transition-transform">
               <stat.icon className={`w-6 h-6 ${stat.color}`} />
             </div>
-          </motion.div>
+          </HoverCard>
         ))}
       </div>
 

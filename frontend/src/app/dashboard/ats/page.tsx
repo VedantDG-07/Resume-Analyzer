@@ -5,6 +5,7 @@ import { Sparkles, ScanLine, CheckCircle2, XCircle, Search, UploadCloud, Trash2 
 import { motion } from "framer-motion";
 import Link from "next/link";
 import { useLatestAnalysis } from "@/lib/useAnalysis";
+import { PremiumButton } from "@/components/animations/PremiumButton";
 
 const atsFields = [
   { field: "First Name", status: "found", value: "Rahul" },
@@ -70,13 +71,13 @@ export default function ATSPage() {
           </h1>
           <p className="text-muted-foreground mt-1">See exactly how recruiting software reads your resume.</p>
         </div>
-        <button
+        <PremiumButton
+          variant="danger"
           onClick={handleRemoveResume}
-          className="flex items-center gap-2 px-4 py-2 rounded-xl bg-red-500/10 text-red-400 hover:bg-red-500/20 border border-red-500/20 transition-colors text-sm font-medium"
         >
           <Trash2 className="w-4 h-4" />
           Remove Data
-        </button>
+        </PremiumButton>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">

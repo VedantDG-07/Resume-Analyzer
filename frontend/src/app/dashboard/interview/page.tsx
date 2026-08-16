@@ -6,6 +6,8 @@ import { useState, useEffect } from "react";
 import EmptyState from "@/components/EmptyState";
 import Link from "next/link";
 import { useLatestAnalysis } from "@/lib/useAnalysis";
+import { PremiumButton } from "@/components/animations/PremiumButton";
+import { HoverCard } from "@/components/animations/HoverCard";
 
 type QuestionType = "resume_project" | "technical" | "job_role";
 
@@ -147,14 +149,13 @@ export default function InterviewPage() {
             ) : (
               <motion.div key="questions" className="space-y-6">
                 {questions.map((q, i) => (
-                  <motion.div 
+                  <HoverCard 
                     key={i}
-                    initial={{ opacity: 0, x: -20 }}
-                    animate={{ opacity: 1, x: 0 }}
-                    transition={{ delay: i * 0.15 }}
-                    className="p-6 rounded-3xl glass-card border border-white/5 space-y-4 group hover:border-primary/30 transition-all"
+                    delay={i * 0.15}
+                    glowColor="cyan"
+                    className="p-6 transition-all transform hover:rotate-x-2 hover:-translate-y-1"
                   >
-                    <div className="flex items-center justify-between">
+                    <div className="flex items-center justify-between mb-4">
                       <div className="flex items-center gap-3">
                         <div className="p-2 rounded-full bg-primary/10 text-primary">
                           <UserCircle className="w-5 h-5" />
@@ -170,25 +171,25 @@ export default function InterviewPage() {
                       {q.question}
                     </p>
                     
-                    <div className="pl-14 pt-2">
+                    <div className="pl-14 pt-2 mt-4">
                       <div className="bg-white/5 border border-white/10 rounded-xl p-4 space-y-2">
                         <p className="text-xs font-semibold text-primary uppercase tracking-wider">Why this question?</p>
                         <p className="text-sm text-muted-foreground italic">"{q.reason}"</p>
                       </div>
                     </div>
-                  </motion.div>
+                  </HoverCard>
                 ))}
 
                 <motion.div 
                   initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.6 }}
                   className="flex justify-center pt-4"
                 >
-                  <button 
+                  <PremiumButton 
+                    variant="secondary"
                     onClick={fetchQuestions}
-                    className="flex items-center gap-2 px-6 py-3 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-white font-medium transition-all"
                   >
                     <RefreshCw className="w-4 h-4" /> Generate New Questions
-                  </button>
+                  </PremiumButton>
                 </motion.div>
               </motion.div>
             )}
@@ -207,9 +208,9 @@ export default function InterviewPage() {
               Start a realistic, voice-based AI mock interview session tailored to your exact profile.
             </p>
             <Link href="/dashboard/interview/session" className="w-full relative z-10">
-              <button className="w-full py-3 px-4 rounded-xl bg-primary text-white font-medium hover:-translate-y-0.5 transition-all shadow-lg shadow-primary/25">
+              <PremiumButton variant="primary" className="w-full">
                 Start Session
-              </button>
+              </PremiumButton>
             </Link>
           </div>
         </motion.div>

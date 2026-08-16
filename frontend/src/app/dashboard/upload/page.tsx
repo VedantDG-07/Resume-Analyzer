@@ -2,8 +2,9 @@
 
 import { useState, useRef } from "react";
 import { Sparkles, UploadCloud, FileText, CheckCircle, AlertCircle, Loader2, Zap, ArrowRight } from "lucide-react";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import { useRouter } from "next/navigation";
+import { PremiumButton } from "@/components/animations/PremiumButton";
 
 export default function UploadPage() {
   const [dragActive, setDragActive] = useState(false);
@@ -182,18 +183,24 @@ export default function UploadPage() {
 
             {file && (
               <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="mt-8 flex justify-end">
-                <button
+                <PremiumButton
+                  variant="primary"
                   onClick={(e) => {
                     e.stopPropagation();
                     handleUpload();
                   }}
                   disabled={isUploading}
-                  className="py-3.5 px-8 rounded-2xl gradient-btn-primary text-white font-mono-tech font-bold text-sm shadow-xl flex items-center gap-3 glow-purple disabled:opacity-50"
                 >
                   {isUploading ? (
                     <>
                       <Loader2 className="w-5 h-5 animate-spin" />
-                      <span>Running AI Heuristics...</span>
+                      <motion.span
+                        key="uploading-text"
+                        animate={{ opacity: [0.5, 1, 0.5] }}
+                        transition={{ repeat: Infinity, duration: 1.5 }}
+                      >
+                        Analyzing ATS & Skills...
+                      </motion.span>
                     </>
                   ) : (
                     <>
@@ -201,7 +208,7 @@ export default function UploadPage() {
                       <Sparkles className="w-4 h-4" />
                     </>
                   )}
-                </button>
+                </PremiumButton>
               </motion.div>
             )}
           </form>

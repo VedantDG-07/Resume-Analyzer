@@ -102,6 +102,28 @@ export function Background() {
           }}
         />
       ))}
+
+      {/* Neural Network Connection Lines */}
+      <svg className="absolute inset-0 w-full h-full opacity-20 pointer-events-none" xmlns="http://www.w3.org/2000/svg">
+        <motion.path
+          d="M 100,200 L 300,150 L 500,400 L 700,200 L 900,500"
+          fill="none"
+          stroke="#06B6D4"
+          strokeWidth="1.5"
+          initial={{ pathLength: 0, opacity: 0 }}
+          animate={{ pathLength: 1, opacity: [0, 1, 0.5, 1, 0] }}
+          transition={{ duration: 10, repeat: Infinity, ease: "linear" }}
+        />
+        <motion.path
+          d="M 200,600 L 400,800 L 600,600 L 800,900"
+          fill="none"
+          stroke="#8B5CF6"
+          strokeWidth="1.5"
+          initial={{ pathLength: 0, opacity: 0 }}
+          animate={{ pathLength: 1, opacity: [0, 1, 0.5, 1, 0] }}
+          transition={{ duration: 12, repeat: Infinity, ease: "linear", delay: 2 }}
+        />
+      </svg>
       
       {/* Noise Texture */}
       <div className="absolute inset-0 opacity-[0.03] mix-blend-overlay" style={{ backgroundImage: 'url("data:image/svg+xml,%3Csvg viewBox=%220 0 200 200%22 xmlns=%22http://www.w3.org/2000/svg%22%3E%3Cfilter id=%22noiseFilter%22%3E%3CfeTurbulence type=%22fractalNoise%22 baseFrequency=%220.8%22 numOctaves=%224%22 stitchTiles=%22stitch%22/%3E%3C/filter%3E%3Crect width=%22100%25%22 height=%22100%25%22 filter=%22url(%23noiseFilter)%22/%3E%3C/svg%3E")' }} />
