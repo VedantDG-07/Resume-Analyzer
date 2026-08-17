@@ -146,3 +146,51 @@ def generate_interview(request: schemas.InterviewGenerateRequest, db: Session = 
     analysis_obj = format_analysis_response(db_analysis)
     questions = services.generate_interview_questions(analysis_obj)
     return questions
+
+@app.post("/api/job-match", response_model=schemas.JDMatchResponse)
+def match_job_description(
+    request: schemas.JDMatchRequest, 
+    db: Session = Depends(get_db), 
+    current_user: models.User = Depends(auth.get_current_user)
+):
+    if request.analysis_id:
+        db_analysis = db.query(models.ResumeAnalysis).filter(
+            models.ResumeAnalysis.id == request.analysis_id,
+            models.ResumeAnalysis.user_id == current_user.id
+        ).first()
+    else:
+        # Get user's latest resume analysis
+        db_analysis = db.query(models.ResumeAnalysis).filter(
+            models.ResumeAnalysis.user_id == current_user.id
+        ).order_by(models.ResumeAnalysis.created_at.desc()).first()
+
+    if not db_analysis:
+        raise HTTPException(status_code=404, detail="No resume uploaded yet. Please upload a resume first.")
+
+    # Reconstruct text context from analysis object
+    analysis_obj = format_analysis_response(db_analysis)
+    
+    resume_context_lines = []
+    if analysis_obj.ai_summary:
+        resume_context_lines.append(analysis_obj.ai_summary)
+    if analysis_obj.strengths:
+        resume_context_lines.extend(analysis_obj.strengths)
+    if analysis_obj.bullet_suggestions:
+        for b in analysis_obj.bullet_suggestions:
+            resume_context_lines.append(b.original)
+            resume_context_lines.append(b.improved)
+    if analysis_obj.parsed_ats_data:
+        for item in analysis_obj.parsed_ats_data:
+            if item.value and item.value != "Missing":
+                resume_context_lines.append(f"{item.field}: {item.value}")
+    
+    resume_text = "\n".join(resume_context_lines)
+    
+    # Run deterministic match engine + LLM explanation layer
+    result = services.analyze_job_match(
+        resume_text=resume_text, 
+        jd_text=request.job_description, 
+        job_title=request.job_title or ""
+    )
+    return result
+

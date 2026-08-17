@@ -79,3 +79,48 @@ export async function getLatestAnalysis(): Promise<AnalysisResult | null> {
   }
 }
 
+export interface SkillMatchItem {
+  skill: string;
+  status: "strong_match" | "match" | "weak_match" | "missing";
+  locations: string[];
+  evidence: string[];
+  confidence: number;
+}
+
+export interface JDMatchResponse {
+  match_score: number;
+  summary: string;
+  strong_matches: SkillMatchItem[];
+  matches: SkillMatchItem[];
+  weak_matches: SkillMatchItem[];
+  missing_keywords: string[];
+  recommendations: string[];
+}
+
+export async function matchJobDescription(
+  jobTitle: string,
+  jobDescription: string,
+  analysisId?: number
+): Promise<JDMatchResponse> {
+  const response = await fetch("http://127.0.0.1:8000/api/job-match", {
+    method: "POST",
+    headers: {
+      ...getHeaders(),
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      job_title: jobTitle,
+      job_description: jobDescription,
+      analysis_id: analysisId,
+    }),
+  });
+
+  if (!response.ok) {
+    const errData = await response.json().catch(() => ({ detail: "Failed to perform job match" }));
+    throw new Error(errData.detail || "Failed to match job description");
+  }
+
+  return response.json();
+}
+
+

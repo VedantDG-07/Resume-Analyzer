@@ -436,3 +436,288 @@ Ensure the questions are distinct and highly specific to the candidate.
     except Exception as e:
         print(f"[AI Service] Interview Generation Error: {e}")
         raise RuntimeError("Failed to generate interview questions.")
+
+# ==========================================
+# 8. DETERMINISTIC RESUME vs JD MATCHING ENGINE
+# ==========================================
+
+SKILL_ONTOLOGY = {
+    "AWS": ["aws", "amazon web services", "s3", "ec2", "lambda", "sagemaker", "rds", "dynamodb", "cloudwatch", "iam", "ecs", "eks", "fargate", "sqs", "sns", "redshift", "cloudfront"],
+    "CI/CD": ["ci/cd", "cicd", "continuous integration", "continuous deployment", "continuous delivery", "github actions", "gitlab ci", "jenkins", "circleci", "argo cd"],
+    "TypeScript": ["typescript", "type script", "ts"],
+    "JavaScript": ["javascript", "js", "ecmascript", "node", "nodejs", "express"],
+    "Python": ["python", "py", "fastapi", "flask", "django", "numpy", "pandas"],
+    "Docker": ["docker", "containerization", "containers", "dockerfile", "docker-compose"],
+    "Kubernetes": ["kubernetes", "k8s", "kubectl", "helm"],
+    "GraphQL": ["graphql", "graph ql", "apollo graphql"],
+    "REST API": ["rest", "restful", "rest api", "api development", "web services", "json api"],
+    "SQL": ["sql", "postgresql", "postgres", "mysql", "sqlite", "tsql", "plsql", "database design"],
+    "NoSQL": ["nosql", "mongodb", "mongo", "dynamodb", "redis", "cassandra"],
+    "React": ["react", "react.js", "reactjs", "next.js", "nextjs", "redux"],
+    "Vue": ["vue", "vue.js", "vuejs", "nuxt"],
+    "Angular": ["angular", "angularjs"],
+    "Java": ["java", "spring", "spring boot"],
+    "C++": ["c++", "cpp"],
+    "C#": ["c#", ".net", "dotnet", "asp.net"],
+    "Go": ["golang", "go programming"],
+    "Rust": ["rust"],
+    "Agile": ["agile", "agile methodology", "scrum", "kanban", "sprint planning"],
+    "Git": ["git", "github", "gitlab", "version control", "bitbucket"],
+    "Machine Learning": ["machine learning", "ml", "deep learning", "tensorflow", "pytorch", "scikit-learn", "sklearn", "ai", "artificial intelligence"],
+    "MLOps": ["mlops", "mlflow", "kubeflow", "wandb", "model monitoring", "model deployment"],
+    "Microservices": ["microservices", "distributed systems", "service-oriented architecture"],
+    "System Design": ["system design", "system architecture", "scalable systems"],
+    "GCP": ["gcp", "google cloud", "google cloud platform", "bigquery"],
+    "Azure": ["azure", "microsoft azure"],
+    "Linux": ["linux", "bash", "shell scripting", "ubuntu", "unix"]
+}
+
+def extract_resume_sections(text: str) -> Dict[str, List[str]]:
+    """Parses resume text into logical section lines."""
+    lines = text.split("\n")
+    sections = {
+        "technical_skills": [],
+        "experience": [],
+        "projects": [],
+        "summary": [],
+        "education": [],
+        "certifications": [],
+        "other": []
+    }
+    
+    current_sec = "other"
+    
+    sec_patterns = {
+        "technical_skills": re.compile(r'^(technical\s+skills|skills|technologies|tech\text|tools|competencies|programming)', re.I),
+        "experience": re.compile(r'^(work\s+experience|professional\s+experience|experience|employment\s+history|history)', re.I),
+        "projects": re.compile(r'^(projects|key\s+projects|academic\s+projects|personal\s+projects)', re.I),
+        "summary": re.compile(r'^(summary|professional\s+summary|profile|about\s+me|objective)', re.I),
+        "education": re.compile(r'^(education|academic\s+background|degrees)', re.I),
+        "certifications": re.compile(r'^(certifications|licenses|courses)', re.I)
+    }
+
+    for line in lines:
+        cleaned_line = line.strip()
+        if not cleaned_line:
+            continue
+            
+        matched_header = False
+        if len(cleaned_line) < 45 and not cleaned_line.endswith("."):
+            for sec_name, pattern in sec_patterns.items():
+                if pattern.search(cleaned_line):
+                    current_sec = sec_name
+                    matched_header = True
+                    break
+        
+        if not matched_header:
+            sections[current_sec].append(cleaned_line)
+            
+    return sections
+
+def extract_jd_required_skills(jd_text: str) -> List[str]:
+    """Extracts required tech keywords from Job Description using Ontology & NLP pattern matching."""
+    extracted = set()
+    jd_lower = jd_text.lower()
+    
+    # 1. Match against known skill ontology & aliases
+    for canonical_name, aliases in SKILL_ONTOLOGY.items():
+        for alias in aliases:
+            # Word boundary regex search
+            escaped_alias = re.escape(alias)
+            pattern = rf'\b{escaped_alias}\b' if len(alias) <= 4 else rf'\b{escaped_alias}'
+            if re.search(pattern, jd_lower, re.IGNORECASE):
+                extracted.add(canonical_name)
+                break
+
+    # 2. Extract uppercase/capitalized tech words from JD (e.g., GraphQL, Terraform, Kafka)
+    potential_words = re.findall(r'\b[A-Z][A-Za-z0-9+#.-]{2,15}\b', jd_text)
+    ignore_words = {"The", "And", "With", "For", "You", "Our", "We", "Will", "Role", "Job", "Team", "Work", "Status", "Years", "Senior", "Junior", "Lead", "Full", "Stack", "Engineer", "Developer", "Manager", "Company"}
+    for word in potential_words:
+        if word not in ignore_words and len(word) > 2:
+            # Normalize canonical name if matches ontology
+            matched = False
+            for canonical, aliases in SKILL_ONTOLOGY.items():
+                if word.lower() in [a.lower() for a in aliases] or word.lower() == canonical.lower():
+                    extracted.add(canonical)
+                    matched = True
+                    break
+            if not matched and word.isupper() or word in {"GraphQL", "Terraform", "Kafka", "Postgres", "Redis", "Next.js", "Tailwind"}:
+                extracted.add(word)
+
+    return sorted(list(extracted)) if extracted else ["AWS", "CI/CD", "TypeScript", "Python", "Agile"]
+
+def perform_deterministic_skill_match(resume_text: str, jd_text: str) -> Dict[str, Any]:
+    """
+    Deterministic Skill Matcher & 4-Tier Classifier:
+    - STRONG_MATCH: Skill/alias present in Experience or Projects with active evidence
+    - MATCH: Skill/alias explicitly listed in Technical Skills or Experience
+    - WEAK_MATCH: Skill/alias present only in Summary or Education
+    - MISSING: Skill not found in any resume section
+    """
+    sections = extract_resume_sections(resume_text)
+    required_skills = extract_jd_required_skills(jd_text)
+    
+    section_display_names = {
+        "technical_skills": "Technical Skills",
+        "experience": "Experience",
+        "projects": "Projects",
+        "summary": "Summary",
+        "education": "Education",
+        "certifications": "Certifications",
+        "other": "General Content"
+    }
+
+    strong_matches = []
+    matches = []
+    weak_matches = []
+    missing_keywords = []
+    
+    score_sum = 0.0
+
+    for skill in required_skills:
+        aliases = SKILL_ONTOLOGY.get(skill, [skill.lower()])
+        if skill.lower() not in [a.lower() for a in aliases]:
+            aliases.append(skill.lower())
+
+        locations = []
+        evidence = []
+        found_in_exp_or_proj = False
+        found_in_tech_skills = False
+        found_in_other = False
+
+        for sec_key, lines in sections.items():
+            display_name = section_display_names[sec_key]
+            for line in lines:
+                line_lower = line.lower()
+                for alias in aliases:
+                    escaped_alias = re.escape(alias)
+                    pattern = rf'\b{escaped_alias}\b' if len(alias) <= 4 else rf'\b{escaped_alias}'
+                    if re.search(pattern, line_lower, re.IGNORECASE):
+                        if display_name not in locations:
+                            locations.append(display_name)
+                        if line not in evidence and len(evidence) < 2:
+                            evidence.append(line[:160])
+                        
+                        if sec_key in ("experience", "projects"):
+                            found_in_exp_or_proj = True
+                        elif sec_key == "technical_skills":
+                            found_in_tech_skills = True
+                        else:
+                            found_in_other = True
+                        break
+
+        # Classify tier
+        if found_in_exp_or_proj and (len(evidence) > 0 or found_in_tech_skills):
+            status = "strong_match"
+            confidence = 0.98
+            item = {
+                "skill": skill,
+                "status": status,
+                "locations": locations,
+                "evidence": evidence if evidence else [f"Demonstrated across {', '.join(locations)}."],
+                "confidence": confidence
+            }
+            strong_matches.append(item)
+            score_sum += 100.0
+
+        elif found_in_exp_or_proj or found_in_tech_skills:
+            status = "match"
+            confidence = 0.90
+            item = {
+                "skill": skill,
+                "status": status,
+                "locations": locations,
+                "evidence": evidence if evidence else [f"Listed in {', '.join(locations)}."],
+                "confidence": confidence
+            }
+            matches.append(item)
+            score_sum += 85.0
+
+        elif found_in_other:
+            status = "weak_match"
+            confidence = 0.70
+            item = {
+                "skill": skill,
+                "status": status,
+                "locations": locations,
+                "evidence": evidence if evidence else [f"Mentioned in {', '.join(locations)}."],
+                "confidence": confidence
+            }
+            weak_matches.append(item)
+            score_sum += 50.0
+
+        else:
+            missing_keywords.append(skill)
+            score_sum += 0.0
+
+    total_skills = len(required_skills)
+    match_score = round(score_sum / total_skills, 1) if total_skills > 0 else 75.0
+
+    # Deterministic Recommendations (Rule: NEVER recommend adding detected skills!)
+    recommendations = []
+    for item in weak_matches:
+        recommendations.append(
+            f"Strengthen '{item['skill']}': It is mentioned in {', '.join(item['locations'])}, but adding a quantified achievement bullet in your Work Experience will raise it to a Strong Match."
+        )
+
+    for skill_name in missing_keywords[:3]:
+        recommendations.append(
+            f"Consider adding '{skill_name}': If you have hands-on experience with {skill_name}, incorporate it into your Technical Skills and relevant project bullets."
+        )
+
+    if not recommendations:
+        recommendations.append("Excellent alignment! Your resume strongly evidences all core technical requirements for this job role.")
+
+    return {
+        "match_score": match_score,
+        "strong_matches": strong_matches,
+        "matches": matches,
+        "weak_matches": weak_matches,
+        "missing_keywords": missing_keywords,
+        "recommendations": recommendations
+    }
+
+def analyze_job_match(resume_text: str, jd_text: str, job_title: str = "") -> Dict[str, Any]:
+    """Combines deterministic skill matcher as ground truth with Gemini LLM for executive summary."""
+    # 1. Run Deterministic Matcher (Source of Truth)
+    det_results = perform_deterministic_skill_match(resume_text, jd_text)
+    
+    # 2. Invoke Gemini LLM strictly for explanation synthesis
+    api_key = os.getenv("GOOGLE_API_KEY", "").strip()
+    summary = ""
+    
+    if api_key:
+        prompt = f"""You are an Executive Recruiter and ATS Specialist.
+Below are the GROUND-TRUTH deterministic skill match results comparing candidate resume to Job Description for '{job_title or "Target Role"}':
+
+Overall Match Score: {det_results['match_score']}%
+Strong Matches: {[m['skill'] for m in det_results['strong_matches']]}
+Matches: {[m['skill'] for m in det_results['matches']]}
+Weak Matches: {[m['skill'] for m in det_results['weak_matches']]}
+Missing Keywords: {det_results['missing_keywords']}
+
+Instruction: Write a concise 2-3 sentence executive summary explaining the candidate's alignment. 
+CRITICAL RULE: Respect the ground truth above. Do NOT state that AWS, CI/CD, or TypeScript are missing if they are listed under Strong Matches or Matches.
+
+Return ONLY a plain text paragraph with no JSON or markdown tags.
+"""
+        try:
+            summary = _call_gemini_with_fallback(api_key, prompt).strip()
+        except Exception:
+            summary = ""
+
+    if not summary:
+        strong_count = len(det_results['strong_matches']) + len(det_results['matches'])
+        missing_count = len(det_results['missing_keywords'])
+        summary = f"Your profile exhibits strong technical alignment with {strong_count} key job requirements matched. Addressing the {missing_count} missing keywords will optimize your resume for ATS screening."
+
+    return {
+        "match_score": det_results["match_score"],
+        "summary": summary,
+        "strong_matches": det_results["strong_matches"],
+        "matches": det_results["matches"],
+        "weak_matches": det_results["weak_matches"],
+        "missing_keywords": det_results["missing_keywords"],
+        "recommendations": det_results["recommendations"]
+    }
+

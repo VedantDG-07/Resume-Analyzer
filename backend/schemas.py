@@ -84,3 +84,25 @@ class InterviewPrepResponse(BaseModel):
 
 class InterviewGenerateRequest(BaseModel):
     analysis_id: int
+
+class SkillMatchItem(BaseModel):
+    skill: str = Field(description="The canonical skill name extracted from the JD")
+    status: str = Field(description="Match status: 'strong_match', 'match', 'weak_match', or 'missing'")
+    locations: List[str] = Field(description="Resume sections where the skill/alias was found", default_factory=list)
+    evidence: List[str] = Field(description="Exact sentence quotes or bullet points from resume as proof", default_factory=list)
+    confidence: float = Field(description="Match confidence score between 0.0 and 1.0", default=1.0)
+
+class JDMatchRequest(BaseModel):
+    analysis_id: Optional[int] = None
+    job_title: Optional[str] = None
+    job_description: str
+
+class JDMatchResponse(BaseModel):
+    match_score: float = Field(description="Overall weighted match percentage (0 to 100)")
+    summary: str = Field(description="Executive summary of candidate fit against job requirements")
+    strong_matches: List[SkillMatchItem] = Field(default_factory=list)
+    matches: List[SkillMatchItem] = Field(default_factory=list)
+    weak_matches: List[SkillMatchItem] = Field(default_factory=list)
+    missing_keywords: List[str] = Field(default_factory=list)
+    recommendations: List[str] = Field(default_factory=list)
+
