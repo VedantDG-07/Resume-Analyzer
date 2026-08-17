@@ -11,3 +11,6 @@ __pycache__/
 *.pyo
 *.pyd
 .pytest_cache/
+atlas-credentials.env
+venv/
+*.db

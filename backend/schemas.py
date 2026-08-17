@@ -1,6 +1,6 @@
 from pydantic import BaseModel, Field
 from datetime import datetime
-from typing import Optional, List, Any
+from typing import Optional, List, Any, Union
 
 class UserBase(BaseModel):
     email: str
@@ -13,7 +13,7 @@ class UserCreate(UserBase):
     emailVerified: bool = False
 
 class UserResponse(UserBase):
-    id: int
+    id: str
     created_at: datetime
     last_login: datetime
 
@@ -68,7 +68,7 @@ class ResumeAnalysisCreate(ResumeAnalysisBase):
     pass
 
 class ResumeAnalysisResponse(ResumeAnalysisBase):
-    id: int
+    id: str
     created_at: datetime
 
     class Config:
@@ -83,7 +83,7 @@ class InterviewPrepResponse(BaseModel):
     questions: List[QuestionItem] = Field(description="A list of exactly 3 interview questions")
 
 class InterviewGenerateRequest(BaseModel):
-    analysis_id: int
+    analysis_id: Union[str, int]
 
 class RoadmapSkill(BaseModel):
     name: str = Field(description="The name of the skill to learn")
@@ -100,15 +100,37 @@ class RoadmapPhase(BaseModel):
     skills: List[RoadmapSkill] = Field(description="Skills belonging to this phase")
 
 class SkillRoadmapResponse(BaseModel):
+    id: Optional[str] = None
     target_role: str
     match_score: float
     phases: List[RoadmapPhase]
 
 class RoadmapGenerateRequest(BaseModel):
-    analysis_id: int
+    analysis_id: Union[str, int]
     target_role: Optional[str] = None
 
 class RoadmapProgressRequest(BaseModel):
-    roadmap_id: int
+    roadmap_id: Union[str, int]
     skill_name: str
     new_status: str
+
+# ---- Job Description Match ----
+
+class JDMatchRequest(BaseModel):
+    job_title: Optional[str] = None
+    job_description: str
+    analysis_id: Optional[Union[str, int]] = None
+
+class JDMatchItem(BaseModel):
+    skill: str = Field(description="The skill or keyword name")
+    locations: List[str] = Field(description="Sections where the skill was found (e.g. 'Experience', 'Skills', 'Projects')", default_factory=list)
+    evidence: List[str] = Field(description="Relevant bullet-point evidence quotes from the resume", default_factory=list)
+
+class JDMatchResponse(BaseModel):
+    match_score: float = Field(description="Overall match score from 0 to 100")
+    summary: str = Field(description="Brief executive summary of the match analysis")
+    strong_matches: List[JDMatchItem] = Field(description="Skills with strong evidence in Experience/Projects sections", default_factory=list)
+    matches: List[JDMatchItem] = Field(description="Skills present/listed in the resume", default_factory=list)
+    weak_matches: List[JDMatchItem] = Field(description="Skills found only in Summary/Education sections", default_factory=list)
+    missing_keywords: List[str] = Field(description="Required skills from the JD not found in the resume", default_factory=list)
+    recommendations: List[str] = Field(description="Actionable recommendations to improve match score", default_factory=list)

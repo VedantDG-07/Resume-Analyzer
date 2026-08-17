@@ -1,62 +1,27 @@
-from sqlalchemy import Column, Integer, String, Float, DateTime, Boolean, ForeignKey, Text
-from sqlalchemy.orm import relationship
 from datetime import datetime
-from database import Base
+from bson import ObjectId
+from typing import Any, Dict, Optional, Union
 
-class User(Base):
-    __tablename__ = "users"
+def to_object_id(val: Union[str, int, ObjectId, None]) -> Optional[ObjectId]:
+    """Safely converts a string/ObjectId to a BSON ObjectId."""
+    if val is None:
+        return None
+    if isinstance(val, ObjectId):
+        return val
+    try:
+        if isinstance(val, str) and len(val) == 24:
+            return ObjectId(val)
+    except Exception:
+        pass
+    return None
 
-    id = Column(Integer, primary_key=True, index=True)
-    googleId = Column(String, unique=True, index=True)
-    fullName = Column(String)
-    email = Column(String, unique=True, index=True)
-    profilePicture = Column(String)
-    provider = Column(String, default="Google")
-    emailVerified = Column(Boolean, default=False)
-    created_at = Column(DateTime, default=datetime.utcnow)
-    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
-    last_login = Column(DateTime, default=datetime.utcnow)
-
-    analyses = relationship("ResumeAnalysis", back_populates="owner")
-
-class ResumeAnalysis(Base):
-    __tablename__ = "resume_analyses"
-
-    id = Column(Integer, primary_key=True, index=True)
-    filename = Column(String, index=True)
-    overall_score = Column(Float)
-    ats_score = Column(Float)
-    skill_match = Column(Float)
-    issues_found = Column(Integer)
-    
-    # Rich LLM & RAG fields
-    ai_summary = Column(Text, nullable=True)
-    ats_feedback = Column(Text, nullable=True)
-    action_verb_feedback = Column(Text, nullable=True)
-    bullet_suggestions = Column(Text, nullable=True) # JSON serialized list of dicts
-    missing_keywords = Column(Text, nullable=True)    # JSON serialized list
-    strengths = Column(Text, nullable=True)           # JSON serialized list
-    improvements = Column(Text, nullable=True)        # JSON serialized list
-    parsed_ats_data = Column(Text, nullable=True)     # JSON serialized list of ATS fields
-    
-    created_at = Column(DateTime, default=datetime.utcnow)
-    
-    user_id = Column(Integer, ForeignKey("users.id"))
-    owner = relationship("User", back_populates="analyses")
-    roadmaps = relationship("SkillRoadmap", back_populates="analysis", cascade="all, delete-orphan")
-
-class SkillRoadmap(Base):
-    __tablename__ = "skill_roadmaps"
-
-    id = Column(Integer, primary_key=True, index=True)
-    user_id = Column(Integer, ForeignKey("users.id"))
-    analysis_id = Column(Integer, ForeignKey("resume_analyses.id"))
-    target_role = Column(String, index=True)
-    match_score = Column(Float)
-    roadmap_data = Column(Text) # JSON serialized roadmap phases
-    
-    created_at = Column(DateTime, default=datetime.utcnow)
-    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
-
-    owner = relationship("User")
-    analysis = relationship("ResumeAnalysis", back_populates="roadmaps")
+def serialize_doc(doc: Optional[Dict[str, Any]]) -> Optional[Dict[str, Any]]:
+    """Converts MongoDB document _id to id string and ensures serializable fields."""
+    if not doc:
+        return None
+    doc_copy = dict(doc)
+    if "_id" in doc_copy:
+        doc_copy["id"] = str(doc_copy.pop("_id"))
+    elif "id" in doc_copy and isinstance(doc_copy["id"], ObjectId):
+        doc_copy["id"] = str(doc_copy["id"])
+    return doc_copy

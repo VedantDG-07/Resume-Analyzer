@@ -15,7 +15,7 @@ interface BulletSuggestion {
 }
 
 interface AnalysisData {
-  id: number;
+  id: string | number;
   filename: string;
   overall_score: number;
   ats_score: number;

@@ -1,6 +1,7 @@
 fastapi
 uvicorn[standard]
-sqlalchemy
+pymongo
+dnspython
 python-multipart
 python-jose[cryptography]
 passlib[bcrypt]

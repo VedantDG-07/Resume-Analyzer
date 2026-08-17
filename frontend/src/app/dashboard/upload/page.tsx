@@ -5,6 +5,7 @@ import { Sparkles, UploadCloud, FileText, CheckCircle, AlertCircle, Loader2, Zap
 import { motion, AnimatePresence } from "framer-motion";
 import { useRouter } from "next/navigation";
 import { PremiumButton } from "@/components/animations/PremiumButton";
+import { uploadResume } from "@/lib/api";
 
 export default function UploadPage() {
   const [dragActive, setDragActive] = useState(false);
@@ -64,29 +65,12 @@ export default function UploadPage() {
     setError(null);
     
     try {
-      const formData = new FormData();
-      formData.append("file", file);
-      
-      const token = typeof window !== 'undefined' ? localStorage.getItem("authToken") : null;
-      const headers: Record<string, string> = token ? { Authorization: `Bearer ${token}` } : {};
-      
-      const response = await fetch("http://127.0.0.1:8000/api/analyze", {
-        method: "POST",
-        headers,
-        body: formData,
-      });
-      
-      if (!response.ok) {
-        throw new Error("Upload failed. Make sure the backend server (port 8000) is running!");
-      }
-      
-      const data = await response.json();
+      await uploadResume(file);
       router.push("/dashboard/analyze");
-      
     } catch (err) {
       console.error(err);
       if (err instanceof TypeError && (err.message.includes("Failed to fetch") || err.message.includes("fetch"))) {
-        setError("Backend server is offline! Please start the FastAPI backend on http://localhost:8000 (see instructions below).");
+        setError("Backend server is offline or unreachable! Please check your API URL configuration.");
       } else {
         setError(err instanceof Error ? err.message : "Backend connection error");
       }

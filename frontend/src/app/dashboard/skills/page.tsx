@@ -24,7 +24,7 @@ export default function SkillsPage() {
     }
   }, [latestData]);
 
-  const fetchExistingRoadmap = async (analysisId: number) => {
+  const fetchExistingRoadmap = async (analysisId: string | number) => {
     setIsFetching(true);
     try {
       const data = await getRoadmap(analysisId);

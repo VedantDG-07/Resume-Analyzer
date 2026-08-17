@@ -520,3 +520,89 @@ Make the roadmap logical, progressive, and highly specific to the candidate.
     except Exception as e:
         print(f"[AI Service] Roadmap Generation Error: {e}")
         raise RuntimeError("Failed to generate skill roadmap.")
+
+# ==========================================
+# 8. JOB DESCRIPTION MATCH ENGINE
+# ==========================================
+
+def match_job_description(resume_analysis: schemas.ResumeAnalysisResponse, job_title: str, job_description: str) -> Dict[str, Any]:
+    """Match a resume against a job description using AI-powered 4-tier classification."""
+    api_key = os.getenv("GEMINI_API_KEY")
+    if not api_key:
+        raise RuntimeError("GEMINI_API_KEY not set.")
+
+    resume_context = f"""
+Resume Filename: {resume_analysis.filename}
+Overall Score: {resume_analysis.overall_score}
+ATS Score: {resume_analysis.ats_score}
+Skill Match: {resume_analysis.skill_match}
+AI Summary: {resume_analysis.ai_summary or 'N/A'}
+Strengths: {', '.join(resume_analysis.strengths or [])}
+Missing Keywords: {', '.join(resume_analysis.missing_keywords or [])}
+"""
+
+    prompt = f"""You are an expert ATS resume matcher. Analyze the resume data against the provided job description and classify every required skill/keyword into exactly one of four tiers.
+
+RESUME DATA:
+{resume_context}
+
+JOB TITLE: {job_title or 'Not specified'}
+
+JOB DESCRIPTION:
+{job_description}
+
+INSTRUCTIONS:
+1. Extract all required skills, technologies, and qualifications from the job description.
+2. For each skill, determine which tier it falls into:
+   - "strong_matches": Skills with strong evidence in Experience or Projects sections (demonstrated with concrete results/bullets)
+   - "matches": Skills that are listed/present in the resume (e.g., in a Skills section)
+   - "weak_matches": Skills found only in Summary, Education, or mentioned tangentially
+   - "missing_keywords": Skills from the JD that are NOT found anywhere in the resume
+3. Provide a match_score (0-100) based on overall alignment.
+4. Write a brief summary of the match analysis.
+5. Provide 3-5 actionable recommendations to improve the match score.
+
+Output strictly as a valid JSON object matching this schema:
+{{
+  "match_score": 72.5,
+  "summary": "Brief executive summary...",
+  "strong_matches": [
+    {{
+      "skill": "Python",
+      "locations": ["Experience", "Projects"],
+      "evidence": ["Built data pipeline processing 1M+ records daily using Python"]
+    }}
+  ],
+  "matches": [
+    {{
+      "skill": "Docker",
+      "locations": ["Skills"],
+      "evidence": []
+    }}
+  ],
+  "weak_matches": [
+    {{
+      "skill": "Kubernetes",
+      "locations": ["Education"],
+      "evidence": []
+    }}
+  ],
+  "missing_keywords": ["Terraform", "GraphQL"],
+  "recommendations": [
+    "Add quantified achievements demonstrating Docker expertise in your Experience section",
+    "Include a Projects section showcasing Kubernetes usage"
+  ]
+}}
+
+Do NOT output any additional text, preamble, or markdown blocks, only the JSON.
+Be thorough and realistic in your assessment. Do not inflate the match score.
+"""
+    try:
+        raw_response = _call_gemini_with_fallback(api_key, prompt)
+        parsed_data = _clean_and_parse_json(raw_response)
+
+        validated = schemas.JDMatchResponse(**parsed_data)
+        return validated.model_dump()
+    except Exception as e:
+        print(f"[AI Service] Job Match Error: {e}")
+        raise RuntimeError("Failed to match job description.")

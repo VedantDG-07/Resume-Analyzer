@@ -8,14 +8,7 @@ import Link from "next/link";
 import { useLatestAnalysis } from "@/lib/useAnalysis";
 import { PremiumButton } from "@/components/animations/PremiumButton";
 import { HoverCard } from "@/components/animations/HoverCard";
-
-type QuestionType = "resume_project" | "technical" | "job_role";
-
-interface QuestionItem {
-  type: QuestionType;
-  question: string;
-  reason: string;
-}
+import { generateInterviewQuestions, QuestionItem } from "@/lib/api";
 
 export default function InterviewPage() {
   const { data: latestData, loading: isLoading } = useLatestAnalysis();
@@ -32,26 +25,8 @@ export default function InterviewPage() {
     setError(null);
     
     try {
-      const token = typeof window !== 'undefined' ? localStorage.getItem("authToken") : null;
-      const headers: Record<string, string> = {
-        "Content-Type": "application/json"
-      };
-      if (token) {
-        headers["Authorization"] = `Bearer ${token}`;
-      }
-
-      const response = await fetch("http://127.0.0.1:8000/api/interview/generate", {
-        method: "POST",
-        headers,
-        body: JSON.stringify({ analysis_id: latestData.id }),
-      });
-
-      if (!response.ok) {
-        throw new Error("Failed to generate questions. Please try again.");
-      }
-
-      const data = await response.json();
-      if (data.questions && data.questions.length === 3) {
+      const data = await generateInterviewQuestions(latestData.id);
+      if (data.questions && data.questions.length > 0) {
         setQuestions(data.questions);
       } else {
         throw new Error("Invalid response format from server.");

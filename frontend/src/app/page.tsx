@@ -9,6 +9,7 @@ import { useGoogleLogin } from "@react-oauth/google";
 import { ScoreRing } from "@/components/ui/ScoreRing";
 import { BulletOptimizer } from "@/components/ui/BulletOptimizer";
 import { Background } from "@/components/layout/Background";
+import { API_BASE_URL } from "@/lib/api";
 
 export default function LandingPage() {
   const router = useRouter();
@@ -45,7 +46,7 @@ export default function LandingPage() {
     onSuccess: async (tokenResponse) => {
       setIsGoogleLoading(true);
       try {
-        const res = await fetch("http://127.0.0.1:8000/api/auth/google", {
+        const res = await fetch(`${API_BASE_URL}/api/auth/google`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ token: tokenResponse.access_token })

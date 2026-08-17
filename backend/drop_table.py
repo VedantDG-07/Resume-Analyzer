@@ -1,12 +1,10 @@
-import sqlite3
+from database import db, users_collection, analyses_collection, roadmaps_collection
 
-def drop_table():
-    conn = sqlite3.connect('sql_app.db')
-    cursor = conn.cursor()
-    cursor.execute("DROP TABLE IF EXISTS resume_analyses")
-    conn.commit()
-    conn.close()
-    print("Table dropped successfully")
+def drop_collections():
+    analyses_collection.drop()
+    roadmaps_collection.drop()
+    users_collection.drop()
+    print("[MongoDB] Collections dropped successfully")
 
 if __name__ == "__main__":
-    drop_table()
+    drop_collections()

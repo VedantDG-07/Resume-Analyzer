@@ -4,14 +4,12 @@ from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer
-from sqlalchemy.orm import Session
 from jose import JWTError, jwt
-from google.oauth2 import id_token
-from google.auth.transport import requests
 import requests as http_requests
 from pydantic import BaseModel
+from bson import ObjectId
 
-from database import get_db
+from database import users_collection
 import models, schemas
 
 # Environment variables
@@ -40,18 +38,26 @@ def create_access_token(data: dict, expires_delta: Optional[timedelta] = None):
     encoded_jwt = jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
     return encoded_jwt
 
-def get_current_user(token: str = Depends(oauth2_scheme), db: Session = Depends(get_db)):
+def get_current_user(token: str = Depends(oauth2_scheme)):
     if token == "mock_admin_token":
-        user = db.query(models.User).filter(models.User.email == "admin@example.com").first()
+        user = users_collection.find_one({"email": "admin@example.com"})
         if not user:
-            user = models.User(
-                googleId="admin_mock", email="admin@example.com", fullName="Admin User", 
-                profilePicture="", emailVerified=True, provider="Local"
-            )
-            db.add(user)
-            db.commit()
-            db.refresh(user)
-        return user
+            now = datetime.utcnow()
+            new_user = {
+                "googleId": "admin_mock",
+                "email": "admin@example.com",
+                "fullName": "Admin User",
+                "profilePicture": "",
+                "emailVerified": True,
+                "provider": "Local",
+                "created_at": now,
+                "updated_at": now,
+                "last_login": now
+            }
+            result = users_collection.insert_one(new_user)
+            new_user["_id"] = result.inserted_id
+            user = new_user
+        return models.serialize_doc(user)
 
     credentials_exception = HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,
@@ -65,19 +71,25 @@ def get_current_user(token: str = Depends(oauth2_scheme), db: Session = Depends(
             raise credentials_exception
     except JWTError:
         raise credentials_exception
-        
-    user = db.query(models.User).filter(models.User.id == int(user_id)).first()
+
+    obj_id = models.to_object_id(user_id)
+    if obj_id:
+        user = users_collection.find_one({"_id": obj_id})
+    else:
+        user = users_collection.find_one({"_id": user_id})
+
     if user is None:
         raise credentials_exception
-    return user
+    return models.serialize_doc(user)
 
 @router.post("/google", response_model=schemas.Token)
-def google_auth(request: GoogleAuthRequest, db: Session = Depends(get_db)):
+def google_auth(request: GoogleAuthRequest):
     try:
         # Verify Google access token by fetching user profile
         resp = http_requests.get(
             'https://www.googleapis.com/oauth2/v3/userinfo', 
-            headers={'Authorization': f'Bearer {request.token}'}
+            headers={'Authorization': f'Bearer {request.token}'},
+            timeout=10
         )
         if resp.status_code != 200:
             raise ValueError(f"Invalid Google access token: {resp.text}")
@@ -93,39 +105,50 @@ def google_auth(request: GoogleAuthRequest, db: Session = Depends(get_db)):
         picture = idinfo.get('picture', '')
         email_verified = idinfo.get('email_verified', False)
         
-        # Check if user exists
-        user = db.query(models.User).filter(models.User.googleId == google_id).first()
+        now = datetime.utcnow()
+        user = users_collection.find_one({"googleId": google_id})
         
         if not user:
-            # Create new user
-            user = models.User(
-                googleId=google_id,
-                email=email,
-                fullName=name,
-                profilePicture=picture,
-                emailVerified=email_verified,
-                provider="Google"
-            )
-            db.add(user)
-            db.commit()
-            db.refresh(user)
+            # Create new user document
+            new_user = {
+                "googleId": google_id,
+                "email": email,
+                "fullName": name,
+                "profilePicture": picture,
+                "emailVerified": email_verified,
+                "provider": "Google",
+                "created_at": now,
+                "updated_at": now,
+                "last_login": now
+            }
+            res = users_collection.insert_one(new_user)
+            new_user["_id"] = res.inserted_id
+            user = new_user
         else:
             # Update last login
-            user.last_login = datetime.utcnow()
-            db.commit()
+            users_collection.update_one(
+                {"_id": user["_id"]},
+                {"$set": {"last_login": now, "updated_at": now, "profilePicture": picture, "fullName": name}}
+            )
+            user["last_login"] = now
+            user["profilePicture"] = picture
+            user["fullName"] = name
             
         # Create JWT token
         access_token_expires = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
         access_token = create_access_token(
-            data={"sub": str(user.id)}, expires_delta=access_token_expires
+            data={"sub": str(user["_id"])}, expires_delta=access_token_expires
         )
         
         return {
             "access_token": access_token, 
             "token_type": "bearer",
-            "user": user
+            "user": models.serialize_doc(user)
         }
         
     except ValueError as e:
         print("Token verification failed:", e)
         raise HTTPException(status_code=400, detail="Invalid Google token")
+    except Exception as e:
+        print("Google auth error:", e)
+        raise HTTPException(status_code=500, detail="Authentication failed")
