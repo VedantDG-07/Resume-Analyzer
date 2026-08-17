@@ -79,48 +79,90 @@ export async function getLatestAnalysis(): Promise<AnalysisResult | null> {
   }
 }
 
-export interface SkillMatchItem {
-  skill: string;
-  status: "strong_match" | "match" | "weak_match" | "missing";
-  locations: string[];
-  evidence: string[];
-  confidence: number;
+export async function deleteAnalysis(analysisId: number): Promise<void> {
+  const response = await fetch(`http://127.0.0.1:8000/api/analyses/${analysisId}`, {
+    method: "DELETE",
+    headers: getHeaders(),
+  });
+  if (!response.ok) {
+    throw new Error("Failed to delete analysis");
+  }
 }
 
-export interface JDMatchResponse {
+export interface RoadmapSkill {
+  name: string;
+  priority: string;
+  status: string;
+  rationale: string;
+  prerequisites: string[];
+  estimated_time: string;
+  project_suggestion: string;
+}
+
+export interface RoadmapPhase {
+  phase: number;
+  title: string;
+  skills: RoadmapSkill[];
+}
+
+export interface SkillRoadmapResponse {
+  target_role: string;
   match_score: number;
-  summary: string;
-  strong_matches: SkillMatchItem[];
-  matches: SkillMatchItem[];
-  weak_matches: SkillMatchItem[];
-  missing_keywords: string[];
-  recommendations: string[];
+  phases: RoadmapPhase[];
 }
 
-export async function matchJobDescription(
-  jobTitle: string,
-  jobDescription: string,
-  analysisId?: number
-): Promise<JDMatchResponse> {
-  const response = await fetch("http://127.0.0.1:8000/api/job-match", {
+export async function generateRoadmap(analysisId: number, targetRole?: string): Promise<SkillRoadmapResponse> {
+  const body = {
+    analysis_id: analysisId,
+    target_role: targetRole,
+  };
+  const response = await fetch("http://127.0.0.1:8000/api/roadmap/generate", {
     method: "POST",
     headers: {
-      ...getHeaders(),
       "Content-Type": "application/json",
+      ...getHeaders(),
     },
-    body: JSON.stringify({
-      job_title: jobTitle,
-      job_description: jobDescription,
-      analysis_id: analysisId,
-    }),
+    body: JSON.stringify(body),
   });
 
   if (!response.ok) {
-    const errData = await response.json().catch(() => ({ detail: "Failed to perform job match" }));
-    throw new Error(errData.detail || "Failed to match job description");
+    throw new Error("Failed to generate roadmap");
   }
 
   return response.json();
 }
 
+export async function getRoadmap(analysisId: number): Promise<SkillRoadmapResponse | null> {
+  try {
+    const response = await fetch(`http://127.0.0.1:8000/api/roadmap/${analysisId}`, {
+      headers: getHeaders(),
+    });
+    if (!response.ok) return null;
+    return await response.json();
+  } catch (err) {
+    console.error("Error fetching roadmap", err);
+    return null;
+  }
+}
 
+export async function updateRoadmapProgress(roadmapId: number, skillName: string, newStatus: string): Promise<SkillRoadmapResponse> {
+  const body = {
+    roadmap_id: roadmapId,
+    skill_name: skillName,
+    new_status: newStatus,
+  };
+  const response = await fetch("http://127.0.0.1:8000/api/roadmap/progress", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      ...getHeaders(),
+    },
+    body: JSON.stringify(body),
+  });
+
+  if (!response.ok) {
+    throw new Error("Failed to update roadmap progress");
+  }
+
+  return response.json();
+}

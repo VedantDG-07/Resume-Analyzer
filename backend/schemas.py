@@ -85,24 +85,30 @@ class InterviewPrepResponse(BaseModel):
 class InterviewGenerateRequest(BaseModel):
     analysis_id: int
 
-class SkillMatchItem(BaseModel):
-    skill: str = Field(description="The canonical skill name extracted from the JD")
-    status: str = Field(description="Match status: 'strong_match', 'match', 'weak_match', or 'missing'")
-    locations: List[str] = Field(description="Resume sections where the skill/alias was found", default_factory=list)
-    evidence: List[str] = Field(description="Exact sentence quotes or bullet points from resume as proof", default_factory=list)
-    confidence: float = Field(description="Match confidence score between 0.0 and 1.0", default=1.0)
+class RoadmapSkill(BaseModel):
+    name: str = Field(description="The name of the skill to learn")
+    priority: str = Field(description="'HIGH', 'MEDIUM', or 'LOW'")
+    status: str = Field(description="'Not Started', 'In Progress', or 'Completed'")
+    rationale: str = Field(description="Why this skill matters for the target role")
+    prerequisites: List[str] = Field(description="List of prerequisite skills")
+    estimated_time: str = Field(description="Estimated time to learn, e.g., '2 weeks'")
+    project_suggestion: str = Field(description="A practical project suggestion to master this skill")
 
-class JDMatchRequest(BaseModel):
-    analysis_id: Optional[int] = None
-    job_title: Optional[str] = None
-    job_description: str
+class RoadmapPhase(BaseModel):
+    phase: int = Field(description="Phase number, e.g. 1")
+    title: str = Field(description="Phase title, e.g. 'Foundation'")
+    skills: List[RoadmapSkill] = Field(description="Skills belonging to this phase")
 
-class JDMatchResponse(BaseModel):
-    match_score: float = Field(description="Overall weighted match percentage (0 to 100)")
-    summary: str = Field(description="Executive summary of candidate fit against job requirements")
-    strong_matches: List[SkillMatchItem] = Field(default_factory=list)
-    matches: List[SkillMatchItem] = Field(default_factory=list)
-    weak_matches: List[SkillMatchItem] = Field(default_factory=list)
-    missing_keywords: List[str] = Field(default_factory=list)
-    recommendations: List[str] = Field(default_factory=list)
+class SkillRoadmapResponse(BaseModel):
+    target_role: str
+    match_score: float
+    phases: List[RoadmapPhase]
 
+class RoadmapGenerateRequest(BaseModel):
+    analysis_id: int
+    target_role: Optional[str] = None
+
+class RoadmapProgressRequest(BaseModel):
+    roadmap_id: int
+    skill_name: str
+    new_status: str

@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState, useEffect } from "react";
 import { cn } from "@/lib/utils";
+import { MagneticWrapper } from "@/components/animations/MagneticWrapper";
 import { motion } from "framer-motion";
 import {
   LayoutDashboard,
@@ -63,7 +64,7 @@ export function Sidebar() {
           </div>
           <div>
             <span className="font-extrabold text-xl tracking-tight text-white flex items-center gap-1">
-              Resum<span className="gradient-text">AI</span>
+              Resume <span className="gradient-text">Analyzer</span>
             </span>
             <span className="text-[10px] font-mono-tech text-cyan-400 block tracking-widest uppercase">
               PULSE v2.0
@@ -77,42 +78,48 @@ export function Sidebar() {
         {navItems.map((item) => {
           const isActive = pathname === item.href;
           return (
-            <Link
-              key={item.name}
-              href={item.href}
-              className="relative block group"
-            >
-              {isActive && (
-                <motion.div
-                  layoutId="sidebar-active-pill"
-                  className="absolute inset-0 bg-gradient-to-r from-purple-600/30 to-cyan-500/20 border border-purple-500/40 rounded-xl glow-purple"
-                  initial={false}
-                  transition={{ type: "spring", stiffness: 350, damping: 30 }}
-                />
-              )}
-              <div
-                className={cn(
-                  "relative flex items-center justify-between px-4 py-2.5 rounded-xl transition-all text-sm font-medium",
-                  isActive
-                    ? "text-white font-bold"
-                    : "text-slate-400 hover:text-white hover:bg-white/5"
-                )}
+            <MagneticWrapper key={item.name} className="block">
+              <Link
+                href={item.href}
+                className="relative block group"
               >
-                <div className="flex items-center gap-3">
-                  <item.icon className={cn("w-4 h-4 transition-colors", isActive ? "text-cyan-400" : "text-slate-400 group-hover:text-cyan-300")} />
-                  <span className="font-mono-tech text-xs tracking-wide">{item.name}</span>
-                </div>
+                {isActive && (
+                  <motion.div
+                    layoutId="sidebar-active-pill"
+                    className="absolute inset-0 bg-gradient-to-r from-purple-600/30 to-cyan-500/20 border border-purple-500/40 rounded-xl glow-purple"
+                    initial={false}
+                    transition={{ type: "spring", stiffness: 350, damping: 30 }}
+                  />
+                )}
+                <div
+                  className={cn(
+                    "relative flex items-center justify-between px-4 py-2.5 rounded-xl transition-all duration-300 text-sm font-medium overflow-hidden",
+                    isActive
+                      ? "text-white font-bold"
+                      : "text-slate-400 hover:text-white hover:bg-white/5"
+                  )}
+                >
+                  <div className="flex items-center gap-3">
+                    <motion.div
+                      whileHover={{ scale: 1.2, rotate: 5 }}
+                      transition={{ type: "spring", stiffness: 400, damping: 10 }}
+                    >
+                      <item.icon className={cn("w-4 h-4 transition-colors", isActive ? "text-cyan-400" : "text-slate-400 group-hover:text-cyan-300")} />
+                    </motion.div>
+                    <span className="font-mono-tech text-xs tracking-wide">{item.name}</span>
+                  </div>
 
-                {item.highlight && !isActive && (
-                  <span className="text-[10px] font-mono-tech px-2 py-0.5 rounded-full bg-gradient-to-r from-purple-500 to-cyan-500 text-white font-bold animate-pulse">
-                    AI
-                  </span>
-                )}
-                {item.badge && isActive && (
-                  <span className="w-2 h-2 rounded-full bg-cyan-400 animate-ping" />
-                )}
-              </div>
-            </Link>
+                  {item.highlight && !isActive && (
+                    <span className="text-[10px] font-mono-tech px-2 py-0.5 rounded-full bg-gradient-to-r from-purple-500 to-cyan-500 text-white font-bold animate-pulse">
+                      AI
+                    </span>
+                  )}
+                  {item.badge && isActive && (
+                    <span className="w-2 h-2 rounded-full bg-cyan-400 animate-ping" />
+                  )}
+                </div>
+              </Link>
+            </MagneticWrapper>
           );
         })}
       </nav>

@@ -25,7 +25,7 @@ export default function LandingPage() {
     if (username === "admin" && password === "password123") {
       setIsLoading(true);
       setError("");
-      
+
       if (typeof window !== "undefined") {
         localStorage.setItem("authToken", "mock_admin_token");
         localStorage.setItem("user", JSON.stringify({
@@ -50,11 +50,11 @@ export default function LandingPage() {
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ token: tokenResponse.access_token })
         });
-        
+
         if (!res.ok) throw new Error("Auth failed");
-        
+
         const data = await res.json();
-        
+
         if (typeof window !== "undefined") {
           localStorage.setItem("authToken", data.access_token);
           localStorage.setItem("user", JSON.stringify(data.user));
@@ -84,7 +84,7 @@ export default function LandingPage() {
             </div>
             <div>
               <span className="font-extrabold text-2xl tracking-tight text-white flex items-center gap-1">
-                Resum<span className="gradient-text">AI</span>
+                Resume <span className="gradient-text">Analyzer</span>
               </span>
               <span className="text-[10px] font-mono-tech text-cyan-400 tracking-widest uppercase block -mt-1">
                 Pulse Engine 2.0
@@ -118,9 +118,9 @@ export default function LandingPage() {
       {/* Hero Section */}
       <section className="relative pt-16 pb-24 px-6 max-w-7xl mx-auto">
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 items-center">
-          
+
           {/* Left Column: Headlines & CTAs */}
-          <motion.div 
+          <motion.div
             className="lg:col-span-7 space-y-8"
             initial={{ opacity: 0, x: -30 }}
             animate={{ opacity: 1, x: 0 }}
@@ -172,7 +172,7 @@ export default function LandingPage() {
           </motion.div>
 
           {/* Right Column: Floating 3D HUD Score Card */}
-          <motion.div 
+          <motion.div
             className="lg:col-span-5 relative"
             initial={{ opacity: 0, scale: 0.9 }}
             animate={{ opacity: 1, scale: 1 }}
@@ -182,7 +182,7 @@ export default function LandingPage() {
             <div className="absolute -inset-4 bg-gradient-to-tr from-purple-600/30 to-cyan-500/30 rounded-3xl blur-2xl opacity-50 animate-pulse-glow" />
 
             <div className="relative glass-card rounded-3xl p-8 border border-white/15 shadow-2xl space-y-6 animate-float">
-              
+
               <div className="flex items-center justify-between pb-4 border-b border-white/10">
                 <div className="flex items-center gap-3">
                   <div className="w-3 h-3 rounded-full bg-cyan-400 animate-ping" />
@@ -191,18 +191,18 @@ export default function LandingPage() {
                   </span>
                 </div>
                 <span className="text-xs font-mono-tech px-2.5 py-1 rounded-full bg-purple-500/20 text-purple-300 border border-purple-500/30">
-                  ResumAI Scan
+                  Resume Analyzer Scan
                 </span>
               </div>
 
               {/* Main Score Ring & HUD metrics */}
               <div className="flex flex-col sm:flex-row items-center justify-around gap-6 py-2">
-                <ScoreRing 
-                  score={88} 
-                  size={150} 
-                  strokeWidth={12} 
-                  label="Overall Score" 
-                  sublabel="TOP 5% APPLICANT" 
+                <ScoreRing
+                  score={88}
+                  size={150}
+                  strokeWidth={12}
+                  label="Overall Score"
+                  sublabel="TOP 5% APPLICANT"
                   glowColor="purple"
                 />
 
@@ -258,7 +258,7 @@ export default function LandingPage() {
             Experience the <span className="gradient-text">Interactive AI Enhancer</span>
           </h2>
           <p className="text-slate-400 max-w-xl mx-auto text-sm font-mono-tech">
-            Click below to see how ResumAI automatically re-writes passive bullet points into high-impact metric statements.
+            Click below to see how Resume Analyzer automatically re-writes passive bullet points into high-impact metric statements.
           </p>
         </div>
 
@@ -278,7 +278,7 @@ export default function LandingPage() {
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-          
+
           {/* Card 1 */}
           <div className="glass-card glass-card-hover rounded-2xl p-6 border border-white/10 space-y-4 relative group">
             <div className="w-12 h-12 rounded-xl bg-purple-500/15 border border-purple-500/30 flex items-center justify-center text-purple-400 group-hover:scale-110 transition-transform">
@@ -381,7 +381,7 @@ export default function LandingPage() {
                 <div className="w-12 h-12 rounded-xl bg-gradient-to-tr from-purple-600 to-cyan-500 flex items-center justify-center mx-auto mb-3 glow-purple">
                   <Sparkles className="w-6 h-6 text-white" />
                 </div>
-                <h3 className="text-2xl font-bold text-white">Access ResumAI Dashboard</h3>
+                <h3 className="text-2xl font-bold text-white">Access Resume Analyzer Dashboard</h3>
                 <p className="text-xs text-slate-400 font-mono-tech mt-1">
                   Login with admin bypass or Google OAuth
                 </p>

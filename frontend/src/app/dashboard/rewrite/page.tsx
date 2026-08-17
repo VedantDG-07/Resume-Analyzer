@@ -2,9 +2,10 @@
 
 import { Sparkles, Wand2, Copy, Check, ArrowRight } from "lucide-react";
 import { useLatestAnalysis } from "@/lib/useAnalysis";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import { useState, useEffect } from "react";
 import EmptyState from "@/components/EmptyState";
+import { PremiumButton } from "@/components/animations/PremiumButton";
 
 const MOCK_REWRITES = [
   [
@@ -104,31 +105,64 @@ export default function RewritePage() {
               </div>
             ) : null}
             <ul className="text-white leading-relaxed space-y-4 list-disc list-inside relative z-10 marker:text-primary">
-              {latestData?.bullet_suggestions && latestData.bullet_suggestions.length > 0 ? (
-                <>
-                  <li className="list-none mb-2 font-medium">{latestData.bullet_suggestions[currentRewriteIndex]?.improved}</li>
-                  <li className="list-none text-sm text-primary/70 mt-4 border-t border-primary/20 pt-4">
-                    <span className="font-semibold text-primary">Why it's better:</span> {latestData.bullet_suggestions[currentRewriteIndex]?.reason}
-                  </li>
-                </>
-              ) : (
-                MOCK_REWRITES[currentRewriteIndex].map((item, i) => (
-                  <li key={i}><span className="font-semibold">{item.verb}</span> {item.text}</li>
-                ))
-              )}
+              <AnimatePresence mode="wait">
+                <motion.div
+                  key={currentRewriteIndex}
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -10 }}
+                  transition={{ duration: 0.3 }}
+                >
+                  {latestData?.bullet_suggestions && latestData.bullet_suggestions.length > 0 ? (
+                    <>
+                      <li className="list-none mb-2 font-medium">
+                        {latestData.bullet_suggestions[currentRewriteIndex]?.improved.split("").map((char, index) => (
+                          <motion.span
+                            key={index}
+                            initial={{ opacity: 0 }}
+                            animate={{ opacity: 1 }}
+                            transition={{ delay: index * 0.01 }}
+                          >
+                            {char}
+                          </motion.span>
+                        ))}
+                      </li>
+                      <motion.li 
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        transition={{ delay: 0.5 }}
+                        className="list-none text-sm text-primary/70 mt-4 border-t border-primary/20 pt-4"
+                      >
+                        <span className="font-semibold text-primary">Why it's better:</span> {latestData.bullet_suggestions[currentRewriteIndex]?.reason}
+                      </motion.li>
+                    </>
+                  ) : (
+                    MOCK_REWRITES[currentRewriteIndex].map((item, i) => (
+                      <motion.li 
+                        key={i}
+                        initial={{ opacity: 0, x: -10 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        transition={{ delay: i * 0.1 }}
+                      >
+                        <span className="font-semibold">{item.verb}</span> {item.text}
+                      </motion.li>
+                    ))
+                  )}
+                </motion.div>
+              </AnimatePresence>
             </ul>
           </div>
         </motion.div>
       </div>
       
       <div className="flex justify-center pt-8">
-         <button 
+         <PremiumButton 
+           variant="primary"
            onClick={handleRewrite}
            disabled={isRewriting}
-           className="px-8 py-3 rounded-xl bg-primary text-white font-medium hover:-translate-y-0.5 transition-all flex items-center gap-2 shadow-[0_0_20px_rgba(37,99,235,0.3)] disabled:opacity-70 disabled:hover:translate-y-0"
          >
           {isRewriting ? "Rewriting..." : "Rewrite Another Section"} <Wand2 className="w-4 h-4" />
-        </button>
+        </PremiumButton>
       </div>
     </div>
   );
